@@ -10,7 +10,7 @@
       "id": "layer1-1",
       "title": "Project Setup & Browserbase Integration",
       "description": "Initialize TypeScript project, configure Browserbase SDK, set up basic file structure and environment variables",
-      "status": "pending",
+      "status": "completed",
       "priority": "critical",
       "layer": 1,
       "day": 1,
@@ -29,7 +29,7 @@
       "id": "layer1-2",
       "title": "Basic Browser Control",
       "description": "Load URL in headless browser, wait for page load, close browser cleanly",
-      "status": "pending",
+      "status": "completed",
       "priority": "critical",
       "layer": 1,
       "day": 1,
@@ -41,14 +41,16 @@
         "Implement browser cleanup on completion",
         "Handle connection errors and timeouts"
       ],
-      "dependencies": ["layer1-1"],
+      "dependencies": [
+        "layer1-1"
+      ],
       "validation": "Can load https://www.google.com and capture page state"
     },
     {
       "id": "layer1-3",
       "title": "Screenshot Capture System",
       "description": "Take single screenshot, save to file system, generate unique filename",
-      "status": "pending",
+      "status": "completed",
       "priority": "critical",
       "layer": 1,
       "day": 1,
@@ -60,7 +62,9 @@
         "Save PNG files to disk",
         "Return file path to caller"
       ],
-      "dependencies": ["layer1-2"],
+      "dependencies": [
+        "layer1-2"
+      ],
       "validation": "Can load a game and save one screenshot to ./test-results/"
     },
     {
@@ -79,48 +83,153 @@
         "Test button clicking on sample game",
         "Implement fallback to Playwright if Stagehand fails"
       ],
-      "dependencies": ["layer1-2"],
+      "dependencies": [
+        "layer1-2"
+      ],
       "validation": "Can detect and click a 'Start' or 'Play' button using Stagehand"
     },
     {
-      "id": "layer2-2",
-      "title": "Action Sequencing & State Detection",
-      "description": "Define action sequence (observe → act → wait → observe), execute 2-3 actions per test, detect game state changes",
+      "id": "layer2-2a",
+      "title": "Action Queue System",
+      "description": "Create data structure and queue management for storing and executing actions",
       "status": "pending",
       "priority": "critical",
       "layer": 2,
       "day": 2,
-      "estimatedHours": 2.5,
+      "estimatedHours": 1,
       "subtasks": [
-        "Implement action queue system",
-        "Create observe() function for page state detection",
-        "Implement act() for executing actions (click, type, key press)",
-        "Add wait logic between actions",
-        "Detect screen/level transitions",
-        "Track action history for metadata"
+        "Define Action interface (type, target, parameters)",
+        "Create ActionQueue class with enqueue/dequeue/peek",
+        "Implement action history tracking",
+        "Add metadata collection (timestamp, result)"
       ],
-      "dependencies": ["layer2-1"],
-      "validation": "Agent can find start button, click it, detect game started, take screenshot"
+      "dependencies": [
+        "layer2-1"
+      ],
+      "validation": "Can enqueue and dequeue actions, history is tracked"
     },
     {
-      "id": "layer2-3",
-      "title": "Error Handling & Timeouts",
-      "description": "Implement 5-minute max timeout, 3-attempt retry logic for page loads, detect page crashes",
+      "id": "layer2-2b",
+      "title": "Observe Function & State Detection",
+      "description": "Implement page state capturing to detect game status and changes",
       "status": "pending",
       "priority": "critical",
       "layer": 2,
       "day": 2,
-      "estimatedHours": 2,
+      "estimatedHours": 1,
       "subtasks": [
-        "Implement global timeout (5 minutes = 300000ms)",
-        "Create retry logic with exponential backoff (3 attempts for page load)",
-        "Implement crash detection (blank screens, console errors)",
-        "Add action count limit (50 max actions)",
-        "Return partial results on timeout/crash",
-        "Log all errors with context"
+        "Create observe() function to capture page state",
+        "Implement DOM element detection",
+        "Capture page title, URL, and visible text",
+        "Store state snapshots for comparison"
       ],
-      "dependencies": ["layer2-2"],
-      "validation": "Test with broken game URL, agent stops gracefully with error report"
+      "dependencies": [
+        "layer2-1"
+      ],
+      "validation": "Can capture page state and detect element presence"
+    },
+    {
+      "id": "layer2-2c",
+      "title": "Act Function & Action Execution",
+      "description": "Implement action execution for click, type, and keyboard inputs",
+      "status": "pending",
+      "priority": "critical",
+      "layer": 2,
+      "day": 2,
+      "estimatedHours": 1,
+      "subtasks": [
+        "Implement click action execution",
+        "Implement type action for text input",
+        "Implement keyboard actions (arrow keys, spacebar, etc)",
+        "Add error handling for failed actions"
+      ],
+      "dependencies": [
+        "layer2-1",
+        "layer2-2a"
+      ],
+      "validation": "Can execute click, type, and keyboard actions successfully"
+    },
+    {
+      "id": "layer2-2d",
+      "title": "State Transition Detection",
+      "description": "Detect when game progresses to new levels or screens",
+      "status": "pending",
+      "priority": "critical",
+      "layer": 2,
+      "day": 2,
+      "estimatedHours": 0.5,
+      "subtasks": [
+        "Compare consecutive page states for differences",
+        "Detect new game screens (DOM changes)",
+        "Track level/screen progression",
+        "Flag state transitions for logging"
+      ],
+      "dependencies": [
+        "layer2-2b",
+        "layer2-2c"
+      ],
+      "validation": "Can detect screen/level transitions and log them"
+    },
+    {
+      "id": "layer2-3a",
+      "title": "Timeout Management System",
+      "description": "Implement multi-level timeout system (page load, action, total test)",
+      "status": "pending",
+      "priority": "critical",
+      "layer": 2,
+      "day": 2,
+      "estimatedHours": 1,
+      "subtasks": [
+        "Create TimeoutManager class with multiple timeout levels",
+        "Implement global test timeout (5 minutes = 300000ms)",
+        "Add per-action timeout (30 seconds default)",
+        "Add page load timeout (10 seconds default)",
+        "Implement timeout warnings and graceful cancellation"
+      ],
+      "dependencies": [
+        "layer2-2d"
+      ],
+      "validation": "Can set and enforce multiple timeout levels"
+    },
+    {
+      "id": "layer2-3b",
+      "title": "Retry Logic with Exponential Backoff",
+      "description": "Implement page load retry mechanism with exponential backoff",
+      "status": "pending",
+      "priority": "critical",
+      "layer": 2,
+      "day": 2,
+      "estimatedHours": 0.5,
+      "subtasks": [
+        "Implement retry counter and backoff calculation",
+        "Create exponential backoff (1s, 2s, 4s for 3 attempts)",
+        "Log retry attempts with timing",
+        "Return error after max retries exceeded"
+      ],
+      "dependencies": [
+        "layer2-3a"
+      ],
+      "validation": "Can retry page loads with appropriate backoff timing"
+    },
+    {
+      "id": "layer2-3c",
+      "title": "Crash & Hang Detection",
+      "description": "Detect and handle page crashes, freezes, and blank screens",
+      "status": "pending",
+      "priority": "critical",
+      "layer": 2,
+      "day": 2,
+      "estimatedHours": 0.5,
+      "subtasks": [
+        "Detect blank/black screenshots (potential crash)",
+        "Monitor console errors for crash indicators",
+        "Track action count limit (50 max actions to prevent loops)",
+        "Flag and return error on detected crash"
+      ],
+      "dependencies": [
+        "layer2-3a"
+      ],
+      "validation": "Can detect crashes and stop execution gracefully"
     },
     {
       "id": "layer3-1",
@@ -139,7 +248,9 @@
         "Capture final state or error state",
         "Store with consistent naming and timestamps"
       ],
-      "dependencies": ["layer2-2"],
+      "dependencies": [
+        "layer2-2"
+      ],
       "validation": "Can capture 3-5 screenshots during a game test, all saved with timestamps"
     },
     {
@@ -159,7 +270,9 @@
         "Include timestamps for each message",
         "Handle console errors from game JavaScript"
       ],
-      "dependencies": ["layer1-2"],
+      "dependencies": [
+        "layer1-2"
+      ],
       "validation": "Console logs are captured and saved to test-results/game-id/console.log"
     },
     {
@@ -179,7 +292,10 @@
         "Include metadata (actions, screens navigated, errors)",
         "Verify file system structure on completion"
       ],
-      "dependencies": ["layer3-1", "layer3-2"],
+      "dependencies": [
+        "layer3-1",
+        "layer3-2"
+      ],
       "validation": "All test artifacts organized in structured directory with manifest.json"
     },
     {
@@ -199,48 +315,135 @@
         "Test with simple text prompt",
         "Handle API errors and timeouts"
       ],
-      "dependencies": ["layer1-1"],
+      "dependencies": [
+        "layer1-1"
+      ],
       "validation": "Can call LLM and receive response with Vercel AI SDK"
     },
     {
-      "id": "layer4-2",
-      "title": "Structured Evaluation Prompting",
-      "description": "Design evaluation prompt with specific questions, implement JSON schema, handle image submissions",
+      "id": "layer4-2a",
+      "title": "Image Processing & Base64 Encoding",
+      "description": "Convert screenshots to LLM-compatible format (base64 encoding)",
       "status": "pending",
       "priority": "high",
       "layer": 4,
       "day": 4,
-      "estimatedHours": 2,
+      "estimatedHours": 0.5,
       "subtasks": [
-        "Design LLM evaluation prompt with 3 criteria: successful_load, responsive_controls, stable",
-        "Implement JSON schema for LLM responses",
-        "Convert screenshots to base64 for LLM submission",
-        "Include console logs in prompt context",
-        "Format metadata for LLM consumption",
-        "Test prompt with sample screenshots"
+        "Read PNG files from disk",
+        "Convert images to base64 format",
+        "Validate base64 output",
+        "Create image batch for multi-screenshot submission"
       ],
-      "dependencies": ["layer4-1", "layer3-1", "layer3-2"],
-      "validation": "Can submit screenshots and logs to LLM, receive structured JSON response"
+      "dependencies": [
+        "layer4-1",
+        "layer3-1"
+      ],
+      "validation": "Can convert screenshots to base64 suitable for LLM APIs"
     },
     {
-      "id": "layer4-3",
-      "title": "LLM Response Processing & Scoring",
-      "description": "Parse and validate LLM outputs, calculate playability score, generate issue descriptions, implement fallback heuristics",
+      "id": "layer4-2b",
+      "title": "Prompt Design & Testing",
+      "description": "Create and validate evaluation prompts for LLM game analysis",
       "status": "pending",
       "priority": "high",
       "layer": 4,
       "day": 4,
-      "estimatedHours": 2,
+      "estimatedHours": 1,
       "subtasks": [
-        "Implement JSON response parsing and validation",
-        "Calculate playability_score (0-100) from LLM evaluation",
+        "Design evaluation prompt with 3 criteria: successful_load, responsive_controls, stable",
+        "Include console logs in prompt context",
+        "Format metadata for LLM consumption",
+        "Create prompt template with variable placeholders",
+        "Test prompt with sample screenshots and logs"
+      ],
+      "dependencies": [
+        "layer4-1",
+        "layer4-2a",
+        "layer3-2"
+      ],
+      "validation": "Can submit complete prompt to LLM with images and logs"
+    },
+    {
+      "id": "layer4-2c",
+      "title": "JSON Schema & Response Validation",
+      "description": "Define and validate LLM response schema for evaluation results",
+      "status": "pending",
+      "priority": "high",
+      "layer": 4,
+      "day": 4,
+      "estimatedHours": 0.5,
+      "subtasks": [
+        "Implement JSON schema for LLM responses",
+        "Create validation function for response structure",
+        "Handle schema violations gracefully",
+        "Return validation errors to caller"
+      ],
+      "dependencies": [
+        "layer4-2b"
+      ],
+      "validation": "Can validate LLM responses against schema, reject invalid responses"
+    },
+    {
+      "id": "layer4-3a",
+      "title": "Response Parsing & Validation",
+      "description": "Extract and validate LLM JSON response structure",
+      "status": "pending",
+      "priority": "high",
+      "layer": 4,
+      "day": 4,
+      "estimatedHours": 0.5,
+      "subtasks": [
+        "Parse JSON from LLM response",
+        "Extract evaluation fields (successful_load, responsive_controls, stable)",
+        "Validate required fields are present",
+        "Handle malformed responses gracefully"
+      ],
+      "dependencies": [
+        "layer4-2c"
+      ],
+      "validation": "Can parse LLM JSON and extract evaluation fields"
+    },
+    {
+      "id": "layer4-3b",
+      "title": "Playability Score Calculation",
+      "description": "Convert LLM evaluation to 0-100 playability score",
+      "status": "pending",
+      "priority": "high",
+      "layer": 4,
+      "day": 4,
+      "estimatedHours": 1,
+      "subtasks": [
+        "Weight evaluation criteria (load, controls, stability)",
+        "Calculate score based on boolean and confidence values",
         "Extract and format issues with severity levels",
         "Generate recommendations from LLM output",
-        "Implement fallback scoring if LLM fails (use console errors, screenshot analysis)",
-        "Calculate confidence score based on LLM certainty"
+        "Apply score penalties for console errors"
       ],
-      "dependencies": ["layer4-2"],
-      "validation": "LLM evaluates screenshots and returns playability score with issues/recommendations"
+      "dependencies": [
+        "layer4-3a"
+      ],
+      "validation": "Can calculate playability score and identify issues"
+    },
+    {
+      "id": "layer4-3c",
+      "title": "Fallback Heuristics & Edge Cases",
+      "description": "Handle LLM failures and implement fallback scoring",
+      "status": "pending",
+      "priority": "high",
+      "layer": 4,
+      "day": 4,
+      "estimatedHours": 0.5,
+      "subtasks": [
+        "Implement fallback scoring if LLM fails (use console errors, screenshot analysis)",
+        "Calculate confidence score based on LLM certainty",
+        "Flag low-confidence results for review",
+        "Handle missing or incomplete LLM responses"
+      ],
+      "dependencies": [
+        "layer4-3b"
+      ],
+      "validation": "Can score games even if LLM fails, confidence scores are calculated"
     },
     {
       "id": "layer5-1",
@@ -260,7 +463,10 @@
         "Format timestamps in ISO8601 format",
         "Calculate total execution time"
       ],
-      "dependencies": ["layer4-3", "layer3-3"],
+      "dependencies": [
+        "layer4-3",
+        "layer3-3"
+      ],
       "validation": "Can generate valid JSON report conforming to TestResult schema"
     },
     {
@@ -280,7 +486,9 @@
         "Display colored output (pass=green, fail=red)",
         "Print summary at completion with file paths"
       ],
-      "dependencies": ["layer5-1"],
+      "dependencies": [
+        "layer5-1"
+      ],
       "validation": "Can run `bun run index.ts <url>` with options, see progress and results"
     },
     {
@@ -300,7 +508,9 @@
         "Support programmatic error handling",
         "Write usage example in examples/simple-test.ts"
       ],
-      "dependencies": ["layer5-2"],
+      "dependencies": [
+        "layer5-2"
+      ],
       "validation": "Can import and call testGame() from another TypeScript file"
     },
     {
@@ -320,7 +530,9 @@
         "Verify partial results returned on failure",
         "Document edge cases and behaviors"
       ],
-      "dependencies": ["layer5-3"],
+      "dependencies": [
+        "layer5-3"
+      ],
       "validation": "System handles 5+ edge cases gracefully without crashing"
     },
     {
@@ -340,7 +552,9 @@
         "Create error categorization (user error vs system error)",
         "Implement graceful degradation everywhere"
       ],
-      "dependencies": ["layer6-1"],
+      "dependencies": [
+        "layer6-1"
+      ],
       "validation": "All error messages are clear and actionable"
     },
     {
@@ -361,7 +575,9 @@
         "Write troubleshooting section",
         "Record 2-5 minute demo video"
       ],
-      "dependencies": ["layer6-2"],
+      "dependencies": [
+        "layer6-2"
+      ],
       "validation": "README is complete, demo video recorded, code is well-commented"
     },
     {
@@ -379,7 +595,9 @@
         "Verify LLM evaluation returns accurate result",
         "Verify JSON report is valid"
       ],
-      "dependencies": ["layer6-3"],
+      "dependencies": [
+        "layer6-3"
+      ],
       "validation": "Game test completes with pass/fail status and playability score"
     },
     {
@@ -396,7 +614,9 @@
         "Verify playability assessment is accurate",
         "Compare LLM score to manual assessment"
       ],
-      "dependencies": ["layer6-3"],
+      "dependencies": [
+        "layer6-3"
+      ],
       "validation": "Platformer test completes with accurate playability assessment"
     },
     {
@@ -413,7 +633,9 @@
         "Verify console logs are captured if any",
         "Verify accurate playability assessment"
       ],
-      "dependencies": ["layer6-3"],
+      "dependencies": [
+        "layer6-3"
+      ],
       "validation": "Idle game test shows accurate interaction and stability assessment"
     },
     {
@@ -431,7 +653,9 @@
         "Code review for clarity and documentation",
         "Verify file structure matches specifications"
       ],
-      "dependencies": ["validation-3"],
+      "dependencies": [
+        "validation-3"
+      ],
       "validation": "All success criteria met: 3+ games tested, 80%+ accuracy achieved, robust error handling"
     }
   ]

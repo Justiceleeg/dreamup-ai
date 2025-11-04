@@ -1,111 +1,64 @@
 ---
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
+description: DreamUp QA Pipeline - Use Node.js for this project (browser automation requirement)
 globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
+alwaysApply: true
 ---
 
-Default to using Bun instead of Node.js.
+## DreamUp QA Pipeline - Runtime Requirements
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+**⚠️ This project requires Node.js 18+ (not Bun)**
 
-## APIs
+### Why Node.js Instead of Bun?
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+The DreamUp QA Pipeline uses **Stagehand** for AI-powered browser automation.
+Stagehand depends on **Playwright**, which currently only supports Node.js runtime.
 
-## Testing
+**Reference:** https://github.com/microsoft/playwright/issues/27139
 
-Use `bun test` to run tests.
+### How to Run This Project
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+```bash
+# Install dependencies (pnpm recommended, npm also works)
+pnpm install
+# or
+npm install
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+# Run the QA pipeline
+pnpm dlx tsx ./src/index.ts <game-url>
+# or with npm
+npx tsx ./src/index.ts <game-url>
+
+# Alternative with Node.js directly
+node --loader tsx ./src/index.ts <game-url>
+
+# Run tests
+pnpm dlx tsx test-layer1.ts
+# or
+npx tsx test-layer1.ts
 ```
 
-## Frontend
+### Development Notes
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+- Write all code in **TypeScript** (strict mode enabled)
+- Code is type-safe and follows best practices
+- Environment variables loaded from `.env` automatically
+- Use Node.js tooling (npm, npx, tsx)
+- All source files use `.ts` extension
 
-Server:
+### Project Structure
 
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
+```
+src/
+├── index.ts              # Main entry point
+├── types.ts              # TypeScript types
+├── browser-agent.ts      # Browser automation
+└── evidence-capture.ts   # Screenshot management
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+### Key Technologies
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-
-// import .css files directly and it works
-import './index.css';
-
-import { createRoot } from "react-dom/client";
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+- **Stagehand** - AI-powered browser automation
+- **Browserbase** - Managed browser infrastructure
+- **Playwright** - Browser control (via Stagehand)
+- **TypeScript** - Type-safe development
+- **Commander** - CLI framework
