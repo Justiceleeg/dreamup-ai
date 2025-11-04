@@ -12,6 +12,9 @@ import { join } from 'path';
 import type { Page } from '@browserbasehq/stagehand/types/page';
 import { randomUUID } from 'crypto';
 
+// Type for page objects (can be Stagehand Page or Playwright Page from context.pages())
+type PageLike = Page | any;
+
 /**
  * Screenshot metadata
  */
@@ -131,12 +134,12 @@ export class EvidenceCapture {
   /**
    * Capture screenshot from page
    *
-   * @param page - Stagehand page object
+   * @param page - Page object (Stagehand or Playwright page from context.pages())
    * @param description - Description of what the screenshot shows
    * @returns Path to saved screenshot
    */
   async captureScreenshot(
-    page: Page,
+    page: PageLike,
     description: string = 'Screenshot'
   ): Promise<string> {
     try {
@@ -150,18 +153,56 @@ export class EvidenceCapture {
 
       console.log(`📸 Capturing screenshot: ${filename}`);
 
-      // Capture screenshot
-      const screenshot = await page.screenshot({ path: filepath });
+      // Capture screenshot - handle both Stagehand and Playwright page objects
+      let screenshot: Buffer | null = null;
 
-      if (!screenshot && !screenshot) {
-        throw new Error('Failed to capture screenshot');
+      try {
+        // Try Stagehand's screenshot method first
+        if (typeof (page as any).screenshot === 'function') {
+          screenshot = await (page as any).screenshot({ path: filepath });
+        } else {
+          throw new Error('No screenshot method found');
+        }
+      } catch (methodError) {
+        // If that fails, it might be a raw Playwright page from context.pages()
+        console.warn(`⚠ Stagehand screenshot failed, trying Playwright API: ${methodError instanceof Error ? methodError.message : String(methodError)}`);
+
+        // For Playwright pages, we need to use locator or evaluate
+        if (typeof (page as any).locator === 'function') {
+          // This is likely a Playwright page
+          screenshot = await (page as any).screenshot?.({ path: filepath });
+          if (!screenshot) {
+            throw new Error('Playwright screenshot method failed');
+          }
+        } else {
+          throw new Error('Unable to determine page type for screenshot');
+        }
+      }
+
+      if (!screenshot) {
+        console.warn('⚠ Screenshot returned null or undefined, but file may have been created at path');
+      }
+
+      // Get URL and title for metadata
+      let url = '';
+      let title = '';
+
+      try {
+        if (typeof (page as any).url === 'function') {
+          url = (page as any).url();
+        }
+        if (typeof (page as any).title === 'function') {
+          title = await (page as any).title();
+        }
+      } catch {
+        console.warn('⚠ Could not retrieve page URL or title');
       }
 
       // Store metadata
       const metadata: ScreenshotMetadata = {
         filename,
         timestamp,
-        url: await page.url(),
+        url,
         description,
         index,
       };
