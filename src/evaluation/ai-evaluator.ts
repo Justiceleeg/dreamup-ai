@@ -8,7 +8,7 @@
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import type { LLMEvaluation, Issue } from './types.js';
+import type { LLMEvaluation, Issue } from '../shared/types.js';
 import * as fs from 'fs';
 
 /**

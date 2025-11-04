@@ -6,7 +6,7 @@
  */
 
 import { Stagehand } from '@browserbasehq/stagehand';
-import type { BrowserSession } from './types.js';
+import type { BrowserSession } from '../shared/types.js';
 
 /**
  * Browser Agent for controlling game interactions

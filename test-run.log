@@ -1,0 +1,39 @@
+🎮 Starting QA test for: https://funhtml5games.com/pacman/index.html
+[2025-11-04 09:50:48.779 -0600] [32mINFO[39m: [36mUsing Browserbase credentials[39m
+    [35mcategory[39m: "init"
+[2025-11-04 09:50:48.779 -0600] [32mINFO[39m: [36mStarting browserbase session[39m
+    [35mcategory[39m: "init"
+[2025-11-04 09:50:48.779 -0600] [32mINFO[39m: [36mCreating new browserbase session...[39m
+    [35mcategory[39m: "init"
+❌ Test failed: Failed to initialize browser: Unknown error: 429
+✓ Test directory created: test-results/funhtml5gamescom-3b65c427/2025-11-04T15-50-48
+✓ Console logs saved: console.log
+✓ Test directory created: test-results/funhtml5gamescom-3b65c427/2025-11-04T15-50-48
+✓ Manifest saved: manifest.json
+✓ Browser resources cleaned up
+✅ Test completed
+{
+  "status": "error",
+  "gameUrl": "https://funhtml5games.com/pacman/index.html",
+  "playability_score": 0,
+  "confidence": 0,
+  "timestamp": "2025-11-04T15:50:50.690Z",
+  "execution_time_ms": 1914,
+  "issues": [
+    {
+      "type": "load_failure",
+      "severity": "critical",
+      "description": "Failed to initialize browser: Unknown error: 429",
+      "detected_at_ms": 0
+    }
+  ],
+  "screenshots": [],
+  "metadata": {
+    "actions_performed": 0,
+    "screens_navigated": 0,
+    "browser_errors": 1,
+    "agent_version": "2.0.0"
+  }
+}
+[2025-11-04 09:50:50.688 -0600] [31mERROR[39m: [36mAPI error (429): {"success":false,"message":"429 You've exceeded your max concurrent sessions limit (limit 1, currently 1). Please contact support to increase your limit."}[39m
+    [35mcategory[39m: "api"

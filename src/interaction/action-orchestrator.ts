@@ -6,7 +6,7 @@
  */
 
 import { Stagehand } from '@browserbasehq/stagehand';
-import type { Action, PageState, ActionResult } from './types.js';
+import type { Action, PageState, ActionResult } from '../shared/types.js';
 
 /**
  * Orchestrates autonomous interaction with game pages using Stagehand V3

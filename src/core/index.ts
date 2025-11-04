@@ -7,11 +7,11 @@
  */
 
 import { Command } from 'commander';
-import type { QAConfig, TestResult } from './types.js';
-import { BrowserAgent } from './browser-agent.js';
-import { EvidenceCapture } from './evidence-capture.js';
-import { ActionOrchestrator } from './action-orchestrator.js';
-import { AIEvaluator } from './ai-evaluator.js';
+import type { QAConfig, TestResult } from '../shared/types.js';
+import { BrowserAgent } from '../browser/browser-agent.js';
+import { EvidenceCapture } from '../evidence/evidence-capture.js';
+import { ImprovedGameInteractor } from '../interaction/improved-game-interactor.js';
+import { AIEvaluator } from '../evaluation/ai-evaluator.js';
 
 const VERSION = '2.0.0'; // Updated for Layer 2
 
@@ -27,7 +27,7 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
   const startTime = Date.now();
   const agent = new BrowserAgent(config.timeout);
   const evidence = new EvidenceCapture(config.gameUrl, config.outputDir);
-  const orchestrator = new ActionOrchestrator(5, 5000, 3000);
+  const interactor = new ImprovedGameInteractor();
   let evaluator: AIEvaluator | null = null;
 
   try {
@@ -40,9 +40,12 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     // Setup evidence capture
     // In Stagehand V3, get the actual page object from context
     const pages = (page as any).context?.pages?.();
-    if (pages && pages.length > 0) {
-      evidence.setupConsoleCapture(pages[0]);
+    if (pages && pages.length === 0) {
+      throw new Error('No pages available in browser context');
     }
+
+    const playwrightPage = pages[0];
+    evidence.setupConsoleCapture(playwrightPage);
 
     // Get page info
     const pageTitle = await agent.getPageTitle();
@@ -52,24 +55,70 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     console.log(`🔗 Current URL: ${currentUrl}`);
 
     // Capture screenshot of loaded game (initial state)
-    const stagehandPage = pages?.[0];
-    if (stagehandPage) {
-      await evidence.captureScreenshot(stagehandPage, 'Initial game load');
-    }
+    const initialScreenshotPath = await evidence.captureScreenshot(playwrightPage, 'Initial game load');
 
-    // Layer 2: Orchestrate autonomous interaction
-    console.log('\n🤖 Beginning autonomous game interaction...');
-    orchestrator.setPage(page);
+    // Layer 3-2: Intelligent game analysis and interaction
+    console.log('\n🤖 Beginning intelligent game interaction...');
+    interactor.setPage(page);
 
-    // Execute 2-3 interaction cycles
-    const actionCount = Math.min(3, config.timeout ? Math.floor(config.timeout / 30000) : 1);
-    console.log(`📍 Executing ${actionCount} interaction cycle(s)...`);
+    try {
+      // Analyze game and build smart action set
+      await interactor.initializeInteraction(playwrightPage, initialScreenshotPath);
 
-    const executedActions = await orchestrator.executeMultipleCycles(actionCount);
+      // Execute multiple interaction cycles with state detection
+      // Allocate ~2 seconds per action, max 10 actions
+      const timePerAction = 2000; // 2 seconds
+      const maxActions = 10;
+      const maxInteractionTime = config.timeout ? Math.min(config.timeout * 0.8, maxActions * timePerAction) : maxActions * timePerAction;
+      const interactionStartTime = Date.now();
 
-    // Capture screenshot after interactions
-    if (executedActions.length > 0 && stagehandPage) {
-      await evidence.captureScreenshot(stagehandPage, 'After autonomous interaction');
+      let successfulActions = 0;
+      let consecutiveFailures = 0;
+      const maxConsecutiveFailures = 3; // Stop if 3 actions fail in a row
+
+      console.log(`📍 Executing up to ${maxActions} actions (${(maxInteractionTime / 1000).toFixed(1)}s available)...`);
+
+      for (let actionNum = 0; actionNum < maxActions; actionNum++) {
+        // Check if we're running out of time
+        const elapsedTime = Date.now() - interactionStartTime;
+        if (elapsedTime > maxInteractionTime) {
+          console.log(`ℹ Time limit reached (${(elapsedTime / 1000).toFixed(1)}s), stopping interaction`);
+          break;
+        }
+
+        console.log(`\n📍 Action ${actionNum + 1}/${maxActions}`);
+
+        // Get last screenshot for comparison
+        const screenshotPaths = interactor.getScreenshotPaths();
+        const lastScreenshot = screenshotPaths[screenshotPaths.length - 1];
+
+        // Execute action with state change detection
+        const stateChanged = await interactor.executeActionCycleWithDetection(evidence, lastScreenshot);
+
+        if (stateChanged) {
+          successfulActions++;
+          consecutiveFailures = 0;
+          console.log(`✓ Action ${actionNum + 1} caused state change`);
+        } else {
+          consecutiveFailures++;
+          console.log(`ℹ Action ${actionNum + 1} did not cause visible state change (${consecutiveFailures}/${maxConsecutiveFailures})`);
+
+          // Stop if too many consecutive failures
+          if (consecutiveFailures >= maxConsecutiveFailures) {
+            console.log('ℹ Too many consecutive failures, stopping interaction');
+            break;
+          }
+        }
+      }
+
+      console.log(
+        `\n✓ Interaction complete - ${interactor.getActionHistory().length} actions executed, ${successfulActions} caused state changes`
+      );
+    } catch (interactionError) {
+      console.warn(
+        `⚠ Game interaction error: ${interactionError instanceof Error ? interactionError.message : String(interactionError)}`
+      );
+      // Continue to evaluation even if interaction fails
     }
 
     // Save evidence artifacts
@@ -109,8 +158,8 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
       screenshots: screenshotPaths,
       console_logs: consoleLogPath,
       metadata: {
-        actions_performed: executedActions.length,
-        screens_navigated: orchestrator.getStateHistory().length,
+        actions_performed: interactor.getActionHistory().length,
+        screenshots_captured: interactor.getScreenshotPaths().length,
         browser_errors: evidence.getConsoleLogs().filter((l) => l.includes('[error]')).length,
         agent_version: VERSION,
         evaluation_reasoning: evaluation.reasoning,
