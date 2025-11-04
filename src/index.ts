@@ -10,14 +10,16 @@ import { Command } from 'commander';
 import type { QAConfig, TestResult } from './types.js';
 import { BrowserAgent } from './browser-agent.js';
 import { EvidenceCapture } from './evidence-capture.js';
+import { ActionOrchestrator } from './action-orchestrator.js';
+import { AIEvaluator } from './ai-evaluator.js';
 
-const VERSION = '1.0.0';
+const VERSION = '2.0.0'; // Updated for Layer 2
 
 /**
- * Main QA test function
+ * Main QA test function with Layer 2 support
  *
  * @param config - Configuration for the test
- * @returns Test result
+ * @returns Test result with AI evaluation
  */
 export async function testGame(config: QAConfig): Promise<TestResult> {
   console.log(`🎮 Starting QA test for: ${config.gameUrl}`);
@@ -25,6 +27,8 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
   const startTime = Date.now();
   const agent = new BrowserAgent(config.timeout);
   const evidence = new EvidenceCapture(config.gameUrl, config.outputDir);
+  const orchestrator = new ActionOrchestrator(5, 5000, 3000);
+  let evaluator: AIEvaluator | null = null;
 
   try {
     // Initialize browser
@@ -43,34 +47,74 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     console.log(`📄 Page title: ${pageTitle}`);
     console.log(`🔗 Current URL: ${currentUrl}`);
 
-    // Capture screenshot of loaded game
-    await evidence.captureScreenshot(page, 'Initial game load');
+    // Capture screenshot of loaded game (initial state)
+    // In Stagehand V3, page is accessed via stagehand.page
+    const stagehandPage = page.page;
+    await evidence.captureScreenshot(stagehandPage, 'Initial game load');
+
+    // Layer 2: Orchestrate autonomous interaction
+    console.log('\n🤖 Beginning autonomous game interaction...');
+    orchestrator.setPage(page);
+
+    // Execute 2-3 interaction cycles
+    const actionCount = Math.min(3, config.timeout ? Math.floor(config.timeout / 30000) : 1);
+    console.log(`📍 Executing ${actionCount} interaction cycle(s)...`);
+
+    const executedActions = await orchestrator.executeMultipleCycles(actionCount);
+
+    // Capture screenshot after interactions
+    if (executedActions.length > 0) {
+      await evidence.captureScreenshot(page, 'After autonomous interaction');
+    }
 
     // Save evidence artifacts
     const consoleLogPath = await evidence.saveConsoleLogs();
     const manifestPath = await evidence.saveManifest(config.gameUrl);
     const screenshotPaths = evidence.getScreenshotPaths();
 
-    // Return successful result
+    // Layer 2: AI Evaluation
+    console.log('\n🔍 Evaluating game playability with AI...');
+    evaluator = new AIEvaluator();
+    const evaluation = await evaluator.evaluateGamePlayability(
+      screenshotPaths,
+      consoleLogPath,
+      config.gameUrl
+    );
+
+    // Convert evaluation to issues
+    const evaluationIssues = AIEvaluator.convertEvaluationToIssues(evaluation);
+
+    // Determine overall status
+    const status =
+      evaluation.playability_score >= 60
+        ? 'pass'
+        : evaluation.playability_score >= 30
+          ? 'fail'
+          : 'error';
+
+    // Return result with AI evaluation
     const result: TestResult = {
-      status: 'pass',
+      status,
       gameUrl: config.gameUrl,
-      playability_score: 50, // Placeholder
-      confidence: 30, // Placeholder
+      playability_score: evaluation.playability_score,
+      confidence: evaluation.confidence,
       timestamp: new Date().toISOString(),
       execution_time_ms: Date.now() - startTime,
-      issues: [],
+      issues: evaluationIssues,
       screenshots: screenshotPaths,
       console_logs: consoleLogPath,
       metadata: {
-        actions_performed: 0,
-        screens_navigated: 1,
-        browser_errors: 0,
+        actions_performed: executedActions.length,
+        screens_navigated: orchestrator.getStateHistory().length,
+        browser_errors: evidence.getConsoleLogs().filter((l) => l.includes('[error]')).length,
         agent_version: VERSION,
+        evaluation_reasoning: evaluation.reasoning,
       },
     };
 
-    console.log(`✅ Test completed successfully`);
+    console.log(
+      `\n✅ Test completed - Playability Score: ${evaluation.playability_score}/100 (Confidence: ${evaluation.confidence}%)`
+    );
     console.log(`📁 Results saved to: ${evidence.getTestDir()}`);
     return result;
   } catch (error) {

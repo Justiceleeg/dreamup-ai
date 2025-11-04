@@ -364,4 +364,16 @@ export class EvidenceCapture {
   getConsoleLogCount(): number {
     return this.consoleLogs.length;
   }
+
+  /**
+   * Get all console logs
+   *
+   * @returns Array of console log entries or formatted string
+   */
+  getConsoleLogs(): string[] {
+    return this.consoleLogs.map((log) => {
+      const level = log.level.toUpperCase();
+      return `[${level}] ${log.message}`;
+    });
+  }
 }

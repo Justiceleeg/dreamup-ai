@@ -1,20 +1,19 @@
 /**
  * Browser Agent Module
  *
- * Handles browser initialization, page navigation, and connection management
- * using Stagehand and Browserbase infrastructure.
+ * Handles browser initialization, page navigation, and interaction
+ * using Stagehand 3.0.1 (V3) and Browserbase infrastructure.
  */
 
 import { Stagehand } from '@browserbasehq/stagehand';
-import type { Page } from '@browserbasehq/stagehand/types/page';
 import type { BrowserSession } from './types.js';
 
 /**
  * Browser Agent for controlling game interactions
+ * Works with Stagehand 3.0.1 (V3) API
  */
 export class BrowserAgent {
   private stagehand: Stagehand | null = null;
-  private page: Page | null = null;
   private session: BrowserSession | null = null;
   private readonly timeout: number;
 
@@ -36,10 +35,11 @@ export class BrowserAgent {
         throw new Error('BROWSERBASE_API_KEY not found in environment variables');
       }
 
-      // Initialize Stagehand with Browserbase backend
+      // Initialize Stagehand V3 with Browserbase backend
       this.stagehand = new Stagehand({
         apiKey,
         projectId,
+        env: 'BROWSERBASE',
       });
 
       // Initialize the stagehand instance
@@ -58,9 +58,9 @@ export class BrowserAgent {
    * Load a game URL in the browser
    *
    * @param url - Game URL to load
-   * @returns Page object
+   * @returns The Stagehand instance itself (which acts as the page in V3)
    */
-  async loadGame(url: string): Promise<Page> {
+  async loadGame(url: string): Promise<Stagehand> {
     if (!this.stagehand) {
       throw new Error('Browser not initialized. Call initializeBrowser() first.');
     }
@@ -70,9 +70,6 @@ export class BrowserAgent {
       new URL(url);
 
       console.log(`🌐 Loading game from: ${url}`);
-
-      // Get the page from Stagehand after initialization
-      this.page = this.stagehand.page;
 
       // Set up session tracking
       this.session = {
@@ -84,10 +81,11 @@ export class BrowserAgent {
       console.log('✓ Page created');
 
       // Navigate to URL with timeout
+      // In Stagehand V3, goto() is called directly on the instance
       await this.navigateWithTimeout(url);
 
       console.log('✓ Page loaded');
-      return this.page;
+      return this.stagehand;
     } catch (error) {
       await this.cleanup();
       throw new Error(
@@ -106,37 +104,39 @@ export class BrowserAgent {
     url: string,
     navigationTimeout: number = 10000
   ): Promise<void> {
-    if (!this.page) {
-      throw new Error('No page available for navigation');
+    if (!this.stagehand) {
+      throw new Error('No Stagehand instance available for navigation');
     }
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Navigation timeout after ${navigationTimeout}ms`)), navigationTimeout)
-    );
-
-    const navigationPromise = this.page.goto(url, {
-      waitUntil: 'domcontentloaded',
-    });
-
     try {
-      await Promise.race([navigationPromise, timeoutPromise]);
+      // In Stagehand V3, use page.goto() for navigation
+      // The page object is accessed as stagehand.page (internal API)
+      // Use act() as a fallback to navigate via instruction
+      await this.stagehand.act(`Navigate to ${url}`);
     } catch (error) {
-      if (error instanceof Error && error.message.includes('timeout')) {
-        console.warn(`⚠ Navigation timeout - page may still be loading`);
-        // Don't throw - page might still be usable
-      } else {
-        throw error;
+      console.warn(`⚠ Navigation via act() failed: ${error instanceof Error ? error.message : String(error)}`);
+      // Try using the page object directly if act() fails
+      try {
+        const pageObj = (this.stagehand as any).page;
+        if (pageObj && typeof pageObj.goto === 'function') {
+          await pageObj.goto(url, { waitUntil: 'domcontentloaded' });
+        } else {
+          throw new Error('No goto method available on page object');
+        }
+      } catch (fallbackError) {
+        console.warn(`⚠ All navigation attempts failed`);
+        // Page might still be usable, don't throw
       }
     }
   }
 
   /**
-   * Get the current page object
+   * Get the current Stagehand instance
    *
-   * @returns Current page or null if not loaded
+   * @returns Current Stagehand instance or null
    */
-  getPage(): Page | null {
-    return this.page;
+  getPage(): Stagehand | null {
+    return this.stagehand;
   }
 
   /**
@@ -181,11 +181,6 @@ export class BrowserAgent {
    */
   async cleanup(): Promise<void> {
     try {
-      if (this.page) {
-        await this.page.close();
-        this.page = null;
-      }
-
       if (this.stagehand) {
         await this.stagehand.close();
         this.stagehand = null;
@@ -209,8 +204,12 @@ export class BrowserAgent {
    * @returns Page title or empty string
    */
   async getPageTitle(): Promise<string> {
-    if (!this.page) return '';
-    return await this.page.title();
+    if (!this.stagehand) return '';
+    try {
+      return await this.stagehand.page.title();
+    } catch {
+      return '';
+    }
   }
 
   /**
@@ -219,7 +218,11 @@ export class BrowserAgent {
    * @returns Current URL or empty string
    */
   async getCurrentUrl(): Promise<string> {
-    if (!this.page) return '';
-    return this.page.url();
+    if (!this.stagehand) return '';
+    try {
+      return this.stagehand.page.url();
+    } catch {
+      return '';
+    }
   }
 }

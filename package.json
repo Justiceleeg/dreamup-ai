@@ -14,9 +14,9 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@ai-sdk/openai": "beta",
-    "@browserbasehq/stagehand": "^1.0.0",
-    "ai": "^3.0.0",
+    "@ai-sdk/openai": "^2.0.0",
+    "@browserbasehq/stagehand": "latest",
+    "ai": "^5.0.0",
     "commander": "^11.0.0"
   },
   "devDependencies": {

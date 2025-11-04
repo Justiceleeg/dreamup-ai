@@ -16,7 +16,7 @@
       "day": 1,
       "estimatedHours": 2,
       "subtasks": [
-        "Install Bun and project dependencies (@browserbasehq/stagehand, ai, playwright, typescript)",
+        "Install Bun and project dependencies (@browserbasehq/stagehand, ai, typescript)",
         "Create .env file with Browserbase API credentials",
         "Set up TypeScript configuration and project structure",
         "Create src/ directory with index.ts and types.ts",
