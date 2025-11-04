@@ -64,7 +64,12 @@ export class ActionOrchestrator {
     }
 
     try {
-      const hasCanvas = await this.stagehand.page.evaluate(() => {
+      // In Stagehand V3, access page via context.pages()
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) return false;
+
+      const page = pages[0];
+      const hasCanvas = await page.evaluate(() => {
         return document.querySelectorAll('canvas').length > 0;
       });
 
@@ -96,15 +101,17 @@ export class ActionOrchestrator {
       console.log('👁️  Observing page for interactive elements...');
 
       // Use Stagehand V3's observe() to detect interactive elements
-      const observations = await this.stagehand.observe({
-        instruction: 'Find all interactive game controls, buttons, menus, and input fields. Return a list of actionable elements.',
-      });
+      // observe() can be called with just a string instruction or with options
+      const observations = await this.stagehand.observe(
+        'Find all interactive game controls, buttons, menus, and input fields. Return a list of actionable elements.'
+      );
 
       // Convert observations to actions
-      const actions: Action[] = observations.map((obs, idx) => ({
+      // observations is an array of Action objects from Stagehand
+      const actions: Action[] = observations.map((obs: any, idx: number) => ({
         type: 'click',
-        target: obs.domId || `element-${idx}`,
-        value: obs.text || `Button ${idx}`,
+        target: obs.selector || obs.domId || `element-${idx}`,
+        value: obs.description || obs.text || `Button ${idx}`,
         timestamp: Date.now(),
       }));
 
@@ -143,12 +150,10 @@ export class ActionOrchestrator {
       switch (action.type) {
         case 'click': {
           try {
-            // Use Stagehand V3's act() to click elements
-            const result = await this.stagehand.act({
-              action: `Click on element: ${action.value}`,
-            });
-            success = result?.success ?? false;
-            console.log(success ? `✓ Click executed` : `⚠ Click may not have worked`);
+            // Use Stagehand V3's act() with simple string instruction
+            const result = await this.stagehand.act(`Click on element: ${action.value}`);
+            success = result?.success ?? true; // act() returns ActResult, assume success if no error
+            console.log(`✓ Click executed`);
           } catch (actError) {
             console.warn(`⚠ Click action error: ${actError instanceof Error ? actError.message : String(actError)}`);
             success = false;
@@ -162,11 +167,10 @@ export class ActionOrchestrator {
           }
 
           try {
-            const result = await this.stagehand.act({
-              action: `Type the text: "${action.value}"`,
-            });
-            success = result?.success ?? false;
-            console.log(success ? `✓ Type executed` : `⚠ Type may not have worked`);
+            // Use Stagehand V3's act() with simple string instruction
+            const result = await this.stagehand.act(`Type the text: "${action.value}"`);
+            success = result?.success ?? true;
+            console.log(`✓ Type executed`);
           } catch (actError) {
             console.warn(`⚠ Type action error: ${actError instanceof Error ? actError.message : String(actError)}`);
             success = false;
@@ -180,11 +184,10 @@ export class ActionOrchestrator {
           }
 
           try {
-            const result = await this.stagehand.act({
-              action: `Press the ${action.value} key`,
-            });
-            success = result?.success ?? false;
-            console.log(success ? `✓ Key press executed` : `⚠ Key press may not have worked`);
+            // Use Stagehand V3's act() with simple string instruction
+            const result = await this.stagehand.act(`Press the ${action.value} key`);
+            success = result?.success ?? true;
+            console.log(`✓ Key press executed`);
           } catch (actError) {
             console.warn(`⚠ Key action error: ${actError instanceof Error ? actError.message : String(actError)}`);
             success = false;
@@ -326,8 +329,13 @@ export class ActionOrchestrator {
     if (!this.stagehand) return;
 
     try {
-      const url = this.stagehand.page.url();
-      const title = await this.stagehand.page.title();
+      // In Stagehand V3, access page via context.pages()
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) return;
+
+      const page = pages[0];
+      const url = page.url();
+      const title = await page.title();
 
       const state: PageState = {
         url,

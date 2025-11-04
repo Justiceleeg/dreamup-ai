@@ -38,7 +38,11 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     const page = await agent.loadGame(config.gameUrl);
 
     // Setup evidence capture
-    evidence.setupConsoleCapture(page);
+    // In Stagehand V3, get the actual page object from context
+    const pages = (page as any).context?.pages?.();
+    if (pages && pages.length > 0) {
+      evidence.setupConsoleCapture(pages[0]);
+    }
 
     // Get page info
     const pageTitle = await agent.getPageTitle();
@@ -48,9 +52,10 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     console.log(`🔗 Current URL: ${currentUrl}`);
 
     // Capture screenshot of loaded game (initial state)
-    // In Stagehand V3, page is accessed via stagehand.page
-    const stagehandPage = page.page;
-    await evidence.captureScreenshot(stagehandPage, 'Initial game load');
+    const stagehandPage = pages?.[0];
+    if (stagehandPage) {
+      await evidence.captureScreenshot(stagehandPage, 'Initial game load');
+    }
 
     // Layer 2: Orchestrate autonomous interaction
     console.log('\n🤖 Beginning autonomous game interaction...');

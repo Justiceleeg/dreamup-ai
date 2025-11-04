@@ -108,24 +108,27 @@ export class BrowserAgent {
       throw new Error('No Stagehand instance available for navigation');
     }
 
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Navigation timeout after ${navigationTimeout}ms`)), navigationTimeout)
+    );
+
     try {
-      // In Stagehand V3, use page.goto() for navigation
-      // The page object is accessed as stagehand.page (internal API)
-      // Use act() as a fallback to navigate via instruction
-      await this.stagehand.act(`Navigate to ${url}`);
+      // In Stagehand V3, access page via context.pages()
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) {
+        throw new Error('No pages available in context');
+      }
+
+      const page = pages[0];
+      const navigationPromise = page.goto(url, { waitUntil: 'domcontentloaded' });
+
+      await Promise.race([navigationPromise, timeoutPromise]);
     } catch (error) {
-      console.warn(`⚠ Navigation via act() failed: ${error instanceof Error ? error.message : String(error)}`);
-      // Try using the page object directly if act() fails
-      try {
-        const pageObj = (this.stagehand as any).page;
-        if (pageObj && typeof pageObj.goto === 'function') {
-          await pageObj.goto(url, { waitUntil: 'domcontentloaded' });
-        } else {
-          throw new Error('No goto method available on page object');
-        }
-      } catch (fallbackError) {
-        console.warn(`⚠ All navigation attempts failed`);
-        // Page might still be usable, don't throw
+      if (error instanceof Error && error.message.includes('timeout')) {
+        console.warn(`⚠ Navigation timeout - page may still be loading`);
+        // Don't throw - page might still be usable
+      } else {
+        throw error;
       }
     }
   }
@@ -206,7 +209,9 @@ export class BrowserAgent {
   async getPageTitle(): Promise<string> {
     if (!this.stagehand) return '';
     try {
-      return await this.stagehand.page.title();
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) return '';
+      return await pages[0].title();
     } catch {
       return '';
     }
@@ -220,7 +225,9 @@ export class BrowserAgent {
   async getCurrentUrl(): Promise<string> {
     if (!this.stagehand) return '';
     try {
-      return this.stagehand.page.url();
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) return '';
+      return pages[0].url();
     } catch {
       return '';
     }
