@@ -368,9 +368,10 @@ IMPORTANT:
   /**
    * Analyze game controls from modal/instruction text
    * Used when modal content provides explicit control instructions
+   * Fast, no API calls - just parses the instruction text
    *
    * @param modalContent - Text content from modal/instructions
-   * @param screenshotPath - Path to screenshot for fallback vision analysis
+   * @param screenshotPath - Path to screenshot (unused for text-based analysis, kept for compatibility)
    * @returns Game analysis based on instructions
    */
   async analyzeGameFromInstructions(modalContent: string, screenshotPath: string): Promise<GameAnalysis> {
@@ -382,56 +383,68 @@ IMPORTANT:
     console.log('📖 Analyzing game from modal instructions...');
 
     try {
-      const imageBuffer = fs.readFileSync(screenshotPath);
-      const base64Image = imageBuffer.toString('base64');
+      const lowerContent = modalContent.toLowerCase();
+      const result: GameAnalysis = {
+        gameName: 'Game',
+        gameType: 'dom',
+        keyboardKeys: [],
+        mouseActions: [],
+        startInstructions: modalContent,
+        startAction: 'auto',
+        controlsDescription: modalContent,
+        visibleInstructions: modalContent,
+        confidence: 85,
+      };
 
-      const prompt = `You are analyzing a game based on modal instructions and a screenshot.
+      // Extract game name - look for common patterns
+      if (lowerContent.includes('wordle')) {
+        result.gameName = 'Wordle';
+      } else if (lowerContent.includes('2048')) {
+        result.gameName = '2048';
+      } else if (lowerContent.includes('chess')) {
+        result.gameName = 'Chess';
+      } else if (lowerContent.includes('tetris')) {
+        result.gameName = 'Tetris';
+      }
 
-**Modal/Instructions Content:**
-${modalContent}
+      // Extract keyboard keys from instructions
+      const keyPatterns: Record<string, string[]> = {
+        'arrow': ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'],
+        'wasd': ['w', 'a', 's', 'd'],
+        'space': ['Space'],
+        'enter': ['Enter'],
+        'backspace': ['Backspace'],
+        'escape': ['Escape'],
+        'shift': ['Shift'],
+        'ctrl': ['Control'],
+        'a-z': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+        'letters': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+        'letter': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+      };
 
-**Your task:**
-1. Based on the instructions, what game is this?
-2. What keyboard keys should be used? (Be specific: "letters A-Z", "arrow keys", "Space", "Enter", etc.)
-3. What mouse actions are supported?
-4. How to start the game? (button, key, or auto)
-5. What are the main controls?
+      for (const [pattern, keys] of Object.entries(keyPatterns)) {
+        if (lowerContent.includes(pattern)) {
+          result.keyboardKeys = [...result.keyboardKeys, ...keys];
+        }
+      }
 
-**IMPORTANT:**
-- Prioritize the instructions text over visual analysis
-- If instructions mention letter input, use LETTERS as controls (not arrows)
-- If instructions mention arrow keys, use ARROWS
-- Be specific about the actual controls mentioned`;
+      // Detect mouse actions
+      if (lowerContent.includes('click') || lowerContent.includes('mouse')) {
+        result.mouseActions.push('click');
+      }
 
-      const response = await generateObject({
-        model: openai(this.modelName),
-        schema: gameAnalysisSchema,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: prompt,
-              },
-              {
-                type: 'image',
-                image: base64Image,
-              },
-            ],
-          },
-        ],
-      });
+      // Remove duplicates
+      result.keyboardKeys = [...new Set(result.keyboardKeys)];
 
-      console.log(`✓ Game analysis from instructions: ${response.object.gameName}`);
-      console.log(`  Controls: ${response.object.keyboardKeys.join(', ')}`);
+      console.log(`✓ Game analysis from instructions: ${result.gameName}`);
+      console.log(`  Controls: ${result.keyboardKeys.join(', ')}`);
 
       // Expand letter ranges like "A-Z" into individual letters for action builder
-      const expandedKeys = this.expandLetterRanges(response.object.keyboardKeys);
-      response.object.keyboardKeys = expandedKeys;
+      const expandedKeys = this.expandLetterRanges(result.keyboardKeys);
+      result.keyboardKeys = expandedKeys;
       console.log(`  Expanded controls: ${expandedKeys.join(', ')}`);
 
-      return response.object;
+      return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.warn(`⚠ Instruction analysis failed: ${errorMsg}, falling back to screenshot analysis`);
