@@ -100,7 +100,24 @@ export class ActionOrchestrator {
     try {
       console.log('👁️  Observing page for interactive elements...');
 
-      // Use Stagehand V3's observe() to detect interactive elements
+      // Check if this is a canvas game first
+      const isCanvasGame = await this.detectCanvasGame();
+
+      if (isCanvasGame) {
+        // For canvas games, use canvas-specific observation
+        console.log('🎮 Canvas game detected - using canvas-aware observation...');
+        const canvasActions = await this.observeCanvasGame();
+
+        if (canvasActions.length > 0) {
+          console.log(`✓ Found ${canvasActions.length} canvas interactive element(s)`);
+          await this.recordPageState();
+          return canvasActions;
+        }
+
+        console.log('ℹ No canvas interactive elements identified');
+      }
+
+      // Use Stagehand V3's observe() to detect DOM interactive elements
       // observe() can be called with just a string instruction or with options
       const observations = await this.stagehand.observe(
         'Find all interactive game controls, buttons, menus, and input fields. Return a list of actionable elements.'
@@ -150,10 +167,26 @@ export class ActionOrchestrator {
       switch (action.type) {
         case 'click': {
           try {
-            // Use Stagehand V3's act() with simple string instruction
-            const result = await this.stagehand.act(`Click on element: ${action.value}`);
-            success = result?.success ?? true; // act() returns ActResult, assume success if no error
-            console.log(`✓ Click executed`);
+            // Check if this is a canvas coordinate-based click (target format: "canvas:x,y")
+            if (action.target?.startsWith('canvas:')) {
+              const coords = action.target.substring('canvas:'.length).split(',');
+              const x = parseInt(coords[0], 10);
+              const y = parseInt(coords[1], 10);
+
+              if (!isNaN(x) && !isNaN(y)) {
+                console.log(`🎮 Clicking canvas at coordinates (${x}, ${y})`);
+                const clickSuccess = await this.clickCanvasAt(x, y);
+                success = clickSuccess;
+              } else {
+                console.warn(`⚠ Invalid canvas coordinates: ${action.target}`);
+                success = false;
+              }
+            } else {
+              // Use Stagehand V3's act() with simple string instruction for DOM elements
+              const result = await this.stagehand.act(`Click on element: ${action.value}`);
+              success = result?.success ?? true; // act() returns ActResult, assume success if no error
+              console.log(`✓ Click executed`);
+            }
           } catch (actError) {
             console.warn(`⚠ Click action error: ${actError instanceof Error ? actError.message : String(actError)}`);
             success = false;
@@ -405,5 +438,94 @@ export class ActionOrchestrator {
     this.actionHistory = [];
     this.stateHistory = [];
     console.log('✓ Action and state history cleared');
+  }
+
+  /**
+   * Handle canvas game interaction by identifying canvas and its center
+   * For games like Pac-Man where UI is rendered on canvas
+   *
+   * @returns Actions identified on canvas, or empty array if none found
+   */
+  async observeCanvasGame(): Promise<Action[]> {
+    if (!this.stagehand) {
+      return [];
+    }
+
+    try {
+      console.log('🎮 Attempting canvas game observation...');
+
+      // Get the underlying Playwright page object
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) {
+        console.warn('⚠ No pages available');
+        return [];
+      }
+
+      const page = pages[0];
+
+      // Use evaluate to find canvas and get its position from the browser
+      const canvasInfo = await page.evaluate(() => {
+        const canvas = document.querySelector('canvas');
+        if (!canvas) return null;
+
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          width: rect.width,
+          height: rect.height,
+        };
+      });
+
+      if (!canvasInfo) {
+        console.warn('⚠ Canvas not found on page');
+        return [];
+      }
+
+      console.log(`📐 Canvas found: width=${canvasInfo.width}, height=${canvasInfo.height}`);
+      console.log(`🎯 Canvas center at: x=${canvasInfo.x}, y=${canvasInfo.y}`);
+
+      // Return an action to click the canvas center
+      // where the "PRESS START" button typically is
+      return [{
+        type: 'click',
+        target: `canvas:${Math.round(canvasInfo.x)},${Math.round(canvasInfo.y)}`,
+        value: 'Canvas START button',
+        timestamp: Date.now(),
+      }];
+    } catch (error) {
+      console.warn(`⚠ Canvas observation failed: ${error instanceof Error ? error.message : String(error)}`);
+      return [];
+    }
+  }
+
+  /**
+   * Click on canvas at specific coordinates
+   *
+   * @param x - X coordinate
+   * @param y - Y coordinate
+   * @returns Success status
+   */
+  async clickCanvasAt(x: number, y: number): Promise<boolean> {
+    if (!this.stagehand) {
+      return false;
+    }
+
+    try {
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) {
+        return false;
+      }
+
+      const page = pages[0];
+
+      // Click at the specified coordinates
+      await page.click(`canvas`, { position: { x: x, y: y } });
+      console.log(`✓ Clicked canvas at (${x}, ${y})`);
+      return true;
+    } catch (error) {
+      console.warn(`⚠ Canvas click failed: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
   }
 }
