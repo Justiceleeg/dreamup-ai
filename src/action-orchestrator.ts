@@ -500,7 +500,7 @@ export class ActionOrchestrator {
   }
 
   /**
-   * Click on canvas at specific coordinates
+   * Click on canvas at specific coordinates using Stagehand's act()
    *
    * @param x - X coordinate
    * @param y - Y coordinate
@@ -512,19 +512,16 @@ export class ActionOrchestrator {
     }
 
     try {
-      const pages = (this.stagehand as any).context?.pages?.();
-      if (!pages || pages.length === 0) {
-        return false;
-      }
+      // Use Stagehand's act() to perform the click action
+      // This works with the canvas by using natural language combined with coordinates
+      const result = await this.stagehand.act(
+        `Click on the canvas at coordinates approximately (${Math.round(x)}, ${Math.round(y)}), which appears to be the center of the game area`
+      );
 
-      const page = pages[0];
-
-      // Click at the specified coordinates
-      await page.click(`canvas`, { position: { x: x, y: y } });
-      console.log(`✓ Clicked canvas at (${x}, ${y})`);
-      return true;
+      console.log(`✓ Stagehand executed canvas click at (${x}, ${y})`);
+      return result?.success ?? true;
     } catch (error) {
-      console.warn(`⚠ Canvas click failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(`⚠ Canvas click via act() failed: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
