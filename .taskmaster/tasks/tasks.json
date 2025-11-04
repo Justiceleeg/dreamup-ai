@@ -1,662 +1,664 @@
 {
-  "metadata": {
-    "project": "DreamUp QA Pipeline",
-    "version": "1.0.0",
-    "created": "2025-11-04",
-    "description": "Autonomous AI agent for testing browser games"
-  },
-  "tasks": [
-    {
-      "id": "layer1-1",
-      "title": "Project Setup & Browserbase Integration",
-      "description": "Initialize TypeScript project, configure Browserbase SDK, set up basic file structure and environment variables",
-      "status": "completed",
-      "priority": "critical",
-      "layer": 1,
-      "day": 1,
-      "estimatedHours": 2,
-      "subtasks": [
-        "Install Bun and project dependencies (@browserbasehq/stagehand, ai, typescript)",
-        "Create .env file with Browserbase API credentials",
-        "Set up TypeScript configuration and project structure",
-        "Create src/ directory with index.ts and types.ts",
-        "Write basic project documentation"
-      ],
-      "dependencies": [],
-      "validation": "Can run `bun index.ts` without errors"
-    },
-    {
-      "id": "layer1-2",
-      "title": "Basic Browser Control",
-      "description": "Load URL in headless browser, wait for page load, close browser cleanly",
-      "status": "completed",
-      "priority": "critical",
-      "layer": 1,
-      "day": 1,
-      "estimatedHours": 2,
-      "subtasks": [
-        "Integrate Browserbase SDK to initialize browser sessions",
-        "Implement loadGame() function that accepts URL",
-        "Add page load waiting logic with timeout",
-        "Implement browser cleanup on completion",
-        "Handle connection errors and timeouts"
-      ],
-      "dependencies": [
-        "layer1-1"
-      ],
-      "validation": "Can load https://www.google.com and capture page state"
-    },
-    {
-      "id": "layer1-3",
-      "title": "Screenshot Capture System",
-      "description": "Take single screenshot, save to file system, generate unique filename",
-      "status": "completed",
-      "priority": "critical",
-      "layer": 1,
-      "day": 1,
-      "estimatedHours": 1.5,
-      "subtasks": [
-        "Implement captureScreenshot() function",
-        "Create file structure: test-results/{game-id}/{timestamp}/",
-        "Generate unique filenames for screenshots",
-        "Save PNG files to disk",
-        "Return file path to caller"
-      ],
-      "dependencies": [
-        "layer1-2"
-      ],
-      "validation": "Can load a game and save one screenshot to ./test-results/"
-    },
-    {
-      "id": "layer2-1",
-      "title": "Stagehand Integration",
-      "description": "Install and configure Stagehand for AI-powered button detection and clicking",
-      "status": "pending",
-      "priority": "critical",
-      "layer": 2,
-      "day": 2,
-      "estimatedHours": 2,
-      "subtasks": [
-        "Install @browserbasehq/stagehand library",
-        "Initialize Stagehand with browser instance",
-        "Implement act() wrapper for button detection",
-        "Test button clicking on sample game",
-        "Implement fallback to Playwright if Stagehand fails"
-      ],
-      "dependencies": [
-        "layer1-2"
-      ],
-      "validation": "Can detect and click a 'Start' or 'Play' button using Stagehand"
-    },
-    {
-      "id": "layer2-2a",
-      "title": "Action Queue System",
-      "description": "Create data structure and queue management for storing and executing actions",
-      "status": "pending",
-      "priority": "critical",
-      "layer": 2,
-      "day": 2,
-      "estimatedHours": 1,
-      "subtasks": [
-        "Define Action interface (type, target, parameters)",
-        "Create ActionQueue class with enqueue/dequeue/peek",
-        "Implement action history tracking",
-        "Add metadata collection (timestamp, result)"
-      ],
-      "dependencies": [
-        "layer2-1"
-      ],
-      "validation": "Can enqueue and dequeue actions, history is tracked"
-    },
-    {
-      "id": "layer2-2b",
-      "title": "Observe Function & State Detection",
-      "description": "Implement page state capturing to detect game status and changes",
-      "status": "pending",
-      "priority": "critical",
-      "layer": 2,
-      "day": 2,
-      "estimatedHours": 1,
-      "subtasks": [
-        "Create observe() function to capture page state",
-        "Implement DOM element detection",
-        "Capture page title, URL, and visible text",
-        "Store state snapshots for comparison"
-      ],
-      "dependencies": [
-        "layer2-1"
-      ],
-      "validation": "Can capture page state and detect element presence"
-    },
-    {
-      "id": "layer2-2c",
-      "title": "Act Function & Action Execution",
-      "description": "Implement action execution for click, type, and keyboard inputs",
-      "status": "pending",
-      "priority": "critical",
-      "layer": 2,
-      "day": 2,
-      "estimatedHours": 1,
-      "subtasks": [
-        "Implement click action execution",
-        "Implement type action for text input",
-        "Implement keyboard actions (arrow keys, spacebar, etc)",
-        "Add error handling for failed actions"
-      ],
-      "dependencies": [
-        "layer2-1",
-        "layer2-2a"
-      ],
-      "validation": "Can execute click, type, and keyboard actions successfully"
-    },
-    {
-      "id": "layer2-2d",
-      "title": "State Transition Detection",
-      "description": "Detect when game progresses to new levels or screens",
-      "status": "pending",
-      "priority": "critical",
-      "layer": 2,
-      "day": 2,
-      "estimatedHours": 0.5,
-      "subtasks": [
-        "Compare consecutive page states for differences",
-        "Detect new game screens (DOM changes)",
-        "Track level/screen progression",
-        "Flag state transitions for logging"
-      ],
-      "dependencies": [
-        "layer2-2b",
-        "layer2-2c"
-      ],
-      "validation": "Can detect screen/level transitions and log them"
-    },
-    {
-      "id": "layer2-3a",
-      "title": "Timeout Management System",
-      "description": "Implement multi-level timeout system (page load, action, total test)",
-      "status": "pending",
-      "priority": "critical",
-      "layer": 2,
-      "day": 2,
-      "estimatedHours": 1,
-      "subtasks": [
-        "Create TimeoutManager class with multiple timeout levels",
-        "Implement global test timeout (5 minutes = 300000ms)",
-        "Add per-action timeout (30 seconds default)",
-        "Add page load timeout (10 seconds default)",
-        "Implement timeout warnings and graceful cancellation"
-      ],
-      "dependencies": [
-        "layer2-2d"
-      ],
-      "validation": "Can set and enforce multiple timeout levels"
-    },
-    {
-      "id": "layer2-3b",
-      "title": "Retry Logic with Exponential Backoff",
-      "description": "Implement page load retry mechanism with exponential backoff",
-      "status": "pending",
-      "priority": "critical",
-      "layer": 2,
-      "day": 2,
-      "estimatedHours": 0.5,
-      "subtasks": [
-        "Implement retry counter and backoff calculation",
-        "Create exponential backoff (1s, 2s, 4s for 3 attempts)",
-        "Log retry attempts with timing",
-        "Return error after max retries exceeded"
-      ],
-      "dependencies": [
-        "layer2-3a"
-      ],
-      "validation": "Can retry page loads with appropriate backoff timing"
-    },
-    {
-      "id": "layer2-3c",
-      "title": "Crash & Hang Detection",
-      "description": "Detect and handle page crashes, freezes, and blank screens",
-      "status": "pending",
-      "priority": "critical",
-      "layer": 2,
-      "day": 2,
-      "estimatedHours": 0.5,
-      "subtasks": [
-        "Detect blank/black screenshots (potential crash)",
-        "Monitor console errors for crash indicators",
-        "Track action count limit (50 max actions to prevent loops)",
-        "Flag and return error on detected crash"
-      ],
-      "dependencies": [
-        "layer2-3a"
-      ],
-      "validation": "Can detect crashes and stop execution gracefully"
-    },
-    {
-      "id": "layer3-1",
-      "title": "Multi-Screenshot Capture System",
-      "description": "Capture 3-5 screenshots at key moments (baseline, during interaction, end state)",
-      "status": "pending",
-      "priority": "high",
-      "layer": 3,
-      "day": 3,
-      "estimatedHours": 1.5,
-      "subtasks": [
-        "Modify captureScreenshot() to support multiple captures",
-        "Implement strategic timing for screenshot capture",
-        "Capture baseline screenshot before any interaction",
-        "Capture after each major action (button click, etc)",
-        "Capture final state or error state",
-        "Store with consistent naming and timestamps"
-      ],
-      "dependencies": [
-        "layer2-2"
-      ],
-      "validation": "Can capture 3-5 screenshots during a game test, all saved with timestamps"
-    },
-    {
-      "id": "layer3-2",
-      "title": "Console Log Capture",
-      "description": "Hook into browser console, capture errors/warnings/info, save to file",
-      "status": "pending",
-      "priority": "high",
-      "layer": 3,
-      "day": 3,
-      "estimatedHours": 1.5,
-      "subtasks": [
-        "Implement console.log/warn/error interception",
-        "Capture console messages in real-time",
-        "Filter and categorize by severity (error, warning, info)",
-        "Save logs to console.log file",
-        "Include timestamps for each message",
-        "Handle console errors from game JavaScript"
-      ],
-      "dependencies": [
-        "layer1-2"
-      ],
-      "validation": "Console logs are captured and saved to test-results/game-id/console.log"
-    },
-    {
-      "id": "layer3-3",
-      "title": "Structured File Organization & Manifest",
-      "description": "Create directory structure, generate manifest.json, link screenshots to timeline",
-      "status": "pending",
-      "priority": "high",
-      "layer": 3,
-      "day": 3,
-      "estimatedHours": 1,
-      "subtasks": [
-        "Create directory structure test-results/{game-id}/{timestamp}/",
-        "Generate unique game-id and timestamp",
-        "Create manifest.json listing all artifacts",
-        "Link screenshots with timestamps and descriptions",
-        "Include metadata (actions, screens navigated, errors)",
-        "Verify file system structure on completion"
-      ],
-      "dependencies": [
-        "layer3-1",
-        "layer3-2"
-      ],
-      "validation": "All test artifacts organized in structured directory with manifest.json"
-    },
-    {
-      "id": "layer4-1",
-      "title": "LLM Integration & Vercel AI SDK Setup",
-      "description": "Set up Vercel AI SDK, connect to LLM provider (OpenAI/Anthropic/Google)",
-      "status": "pending",
-      "priority": "high",
-      "layer": 4,
-      "day": 4,
-      "estimatedHours": 1.5,
-      "subtasks": [
-        "Install Vercel AI SDK (ai package)",
-        "Configure LLM provider (Anthropic Claude 3.5 Sonnet recommended)",
-        "Set up API key from .env",
-        "Implement basic LLM call function",
-        "Test with simple text prompt",
-        "Handle API errors and timeouts"
-      ],
-      "dependencies": [
-        "layer1-1"
-      ],
-      "validation": "Can call LLM and receive response with Vercel AI SDK"
-    },
-    {
-      "id": "layer4-2a",
-      "title": "Image Processing & Base64 Encoding",
-      "description": "Convert screenshots to LLM-compatible format (base64 encoding)",
-      "status": "pending",
-      "priority": "high",
-      "layer": 4,
-      "day": 4,
-      "estimatedHours": 0.5,
-      "subtasks": [
-        "Read PNG files from disk",
-        "Convert images to base64 format",
-        "Validate base64 output",
-        "Create image batch for multi-screenshot submission"
-      ],
-      "dependencies": [
-        "layer4-1",
-        "layer3-1"
-      ],
-      "validation": "Can convert screenshots to base64 suitable for LLM APIs"
-    },
-    {
-      "id": "layer4-2b",
-      "title": "Prompt Design & Testing",
-      "description": "Create and validate evaluation prompts for LLM game analysis",
-      "status": "pending",
-      "priority": "high",
-      "layer": 4,
-      "day": 4,
-      "estimatedHours": 1,
-      "subtasks": [
-        "Design evaluation prompt with 3 criteria: successful_load, responsive_controls, stable",
-        "Include console logs in prompt context",
-        "Format metadata for LLM consumption",
-        "Create prompt template with variable placeholders",
-        "Test prompt with sample screenshots and logs"
-      ],
-      "dependencies": [
-        "layer4-1",
-        "layer4-2a",
-        "layer3-2"
-      ],
-      "validation": "Can submit complete prompt to LLM with images and logs"
-    },
-    {
-      "id": "layer4-2c",
-      "title": "JSON Schema & Response Validation",
-      "description": "Define and validate LLM response schema for evaluation results",
-      "status": "pending",
-      "priority": "high",
-      "layer": 4,
-      "day": 4,
-      "estimatedHours": 0.5,
-      "subtasks": [
-        "Implement JSON schema for LLM responses",
-        "Create validation function for response structure",
-        "Handle schema violations gracefully",
-        "Return validation errors to caller"
-      ],
-      "dependencies": [
-        "layer4-2b"
-      ],
-      "validation": "Can validate LLM responses against schema, reject invalid responses"
-    },
-    {
-      "id": "layer4-3a",
-      "title": "Response Parsing & Validation",
-      "description": "Extract and validate LLM JSON response structure",
-      "status": "pending",
-      "priority": "high",
-      "layer": 4,
-      "day": 4,
-      "estimatedHours": 0.5,
-      "subtasks": [
-        "Parse JSON from LLM response",
-        "Extract evaluation fields (successful_load, responsive_controls, stable)",
-        "Validate required fields are present",
-        "Handle malformed responses gracefully"
-      ],
-      "dependencies": [
-        "layer4-2c"
-      ],
-      "validation": "Can parse LLM JSON and extract evaluation fields"
-    },
-    {
-      "id": "layer4-3b",
-      "title": "Playability Score Calculation",
-      "description": "Convert LLM evaluation to 0-100 playability score",
-      "status": "pending",
-      "priority": "high",
-      "layer": 4,
-      "day": 4,
-      "estimatedHours": 1,
-      "subtasks": [
-        "Weight evaluation criteria (load, controls, stability)",
-        "Calculate score based on boolean and confidence values",
-        "Extract and format issues with severity levels",
-        "Generate recommendations from LLM output",
-        "Apply score penalties for console errors"
-      ],
-      "dependencies": [
-        "layer4-3a"
-      ],
-      "validation": "Can calculate playability score and identify issues"
-    },
-    {
-      "id": "layer4-3c",
-      "title": "Fallback Heuristics & Edge Cases",
-      "description": "Handle LLM failures and implement fallback scoring",
-      "status": "pending",
-      "priority": "high",
-      "layer": 4,
-      "day": 4,
-      "estimatedHours": 0.5,
-      "subtasks": [
-        "Implement fallback scoring if LLM fails (use console errors, screenshot analysis)",
-        "Calculate confidence score based on LLM certainty",
-        "Flag low-confidence results for review",
-        "Handle missing or incomplete LLM responses"
-      ],
-      "dependencies": [
-        "layer4-3b"
-      ],
-      "validation": "Can score games even if LLM fails, confidence scores are calculated"
-    },
-    {
-      "id": "layer5-1",
-      "title": "Report Generation & JSON Output",
-      "description": "Format evaluation results as JSON, conform to output schema, include artifact paths",
-      "status": "pending",
-      "priority": "high",
-      "layer": 5,
-      "day": 4,
-      "estimatedHours": 1.5,
-      "subtasks": [
-        "Implement reportGenerator module",
-        "Create TestResult schema with all required fields",
-        "Aggregate data from all modules (browser, capture, evaluator)",
-        "Validate output against JSON schema",
-        "Include screenshot and log file paths",
-        "Format timestamps in ISO8601 format",
-        "Calculate total execution time"
-      ],
-      "dependencies": [
-        "layer4-3",
-        "layer3-3"
-      ],
-      "validation": "Can generate valid JSON report conforming to TestResult schema"
-    },
-    {
-      "id": "layer5-2",
-      "title": "CLI Interface Implementation",
-      "description": "Parse command-line arguments, add options (timeout, screenshots, output dir), display progress",
-      "status": "pending",
-      "priority": "high",
-      "layer": 5,
-      "day": 4,
-      "estimatedHours": 1.5,
-      "subtasks": [
-        "Install commander or arg parsing library",
-        "Create CLI interface: qa-agent <game-url>",
-        "Add options: --timeout, --screenshots, --output, --headed",
-        "Implement progress logging to terminal",
-        "Display colored output (pass=green, fail=red)",
-        "Print summary at completion with file paths"
-      ],
-      "dependencies": [
-        "layer5-1"
-      ],
-      "validation": "Can run `bun run index.ts <url>` with options, see progress and results"
-    },
-    {
-      "id": "layer5-3",
-      "title": "Programmatic API Implementation",
-      "description": "Export testGame() function, make Lambda-compatible, return Promise with results",
-      "status": "pending",
-      "priority": "medium",
-      "layer": 5,
-      "day": 4,
-      "estimatedHours": 1,
-      "subtasks": [
-        "Export testGame() as main API function",
-        "Implement TypeScript interfaces for inputs/outputs",
-        "Make compatible with Lambda execution environment",
-        "Handle environment variable configuration",
-        "Support programmatic error handling",
-        "Write usage example in examples/simple-test.ts"
-      ],
-      "dependencies": [
-        "layer5-2"
-      ],
-      "validation": "Can import and call testGame() from another TypeScript file"
-    },
-    {
-      "id": "layer6-1",
-      "title": "Edge Case Handling & Robustness Testing",
-      "description": "Test with broken games, non-games, slow-loading games, verify graceful degradation",
-      "status": "pending",
-      "priority": "medium",
-      "layer": 6,
-      "day": 5,
-      "estimatedHours": 2,
-      "subtasks": [
-        "Test with intentionally broken game (404, timeout, errors)",
-        "Test with non-game website (Google, Wikipedia)",
-        "Test with extremely slow-loading game",
-        "Test with game that crashes during execution",
-        "Verify partial results returned on failure",
-        "Document edge cases and behaviors"
-      ],
-      "dependencies": [
-        "layer5-3"
-      ],
-      "validation": "System handles 5+ edge cases gracefully without crashing"
-    },
-    {
-      "id": "layer6-2",
-      "title": "Error Message Refinement & User Experience",
-      "description": "Improve error clarity, add troubleshooting hints, handle unexpected failures gracefully",
-      "status": "pending",
-      "priority": "medium",
-      "layer": 6,
-      "day": 5,
-      "estimatedHours": 1.5,
-      "subtasks": [
-        "Review all error messages for clarity",
-        "Add actionable troubleshooting hints",
-        "Improve timeout/retry error messaging",
-        "Add context to LLM call failures",
-        "Create error categorization (user error vs system error)",
-        "Implement graceful degradation everywhere"
-      ],
-      "dependencies": [
-        "layer6-1"
-      ],
-      "validation": "All error messages are clear and actionable"
-    },
-    {
-      "id": "layer6-3",
-      "title": "Documentation & Demo",
-      "description": "Write comprehensive README, add inline comments, create demo video, document limitations",
-      "status": "pending",
-      "priority": "medium",
-      "layer": 6,
-      "day": 5,
-      "estimatedHours": 2,
-      "subtasks": [
-        "Write comprehensive README with setup instructions",
-        "Document all CLI options and examples",
-        "Add inline code comments for complex functions",
-        "Create architecture diagram",
-        "Document known limitations and edge cases",
-        "Write troubleshooting section",
-        "Record 2-5 minute demo video"
-      ],
-      "dependencies": [
-        "layer6-2"
-      ],
-      "validation": "README is complete, demo video recorded, code is well-commented"
-    },
-    {
-      "id": "validation-1",
-      "title": "End-to-End Testing (Puzzle Game)",
-      "description": "Test against simple puzzle game (tic-tac-toe), verify all systems work together",
-      "status": "pending",
-      "priority": "critical",
-      "estimatedHours": 1,
-      "subtasks": [
-        "Test with Tic-Tac-Toe: https://codepen.io/coding_dev/full/xxVWKqj",
-        "Verify game loads and renders",
-        "Verify clicks are registered",
-        "Verify screenshots are captured",
-        "Verify LLM evaluation returns accurate result",
-        "Verify JSON report is valid"
-      ],
-      "dependencies": [
-        "layer6-3"
-      ],
-      "validation": "Game test completes with pass/fail status and playability score"
-    },
-    {
-      "id": "validation-2",
-      "title": "End-to-End Testing (Platformer Game)",
-      "description": "Test against platformer game, verify multi-level navigation and robust scoring",
-      "status": "pending",
-      "priority": "critical",
-      "estimatedHours": 1,
-      "subtasks": [
-        "Find and test a simple platformer game",
-        "Verify agent navigates multiple screens/levels",
-        "Verify state transitions are detected",
-        "Verify playability assessment is accurate",
-        "Compare LLM score to manual assessment"
-      ],
-      "dependencies": [
-        "layer6-3"
-      ],
-      "validation": "Platformer test completes with accurate playability assessment"
-    },
-    {
-      "id": "validation-3",
-      "title": "End-to-End Testing (Idle/Clicker Game)",
-      "description": "Test against idle clicker game (Cookie Clicker), verify continuous interaction",
-      "status": "pending",
-      "priority": "critical",
-      "estimatedHours": 1,
-      "subtasks": [
-        "Test with Cookie Clicker: https://orteil.dashnet.org/cookieclicker/",
-        "Verify agent can click repeatedly and detect state changes",
-        "Verify game doesn't timeout during continuous interaction",
-        "Verify console logs are captured if any",
-        "Verify accurate playability assessment"
-      ],
-      "dependencies": [
-        "layer6-3"
-      ],
-      "validation": "Idle game test shows accurate interaction and stability assessment"
-    },
-    {
-      "id": "validation-4",
-      "title": "Success Criteria Verification",
-      "description": "Verify all MVP success criteria are met: 3+ diverse games tested, 80%+ accuracy, graceful error handling, clean codebase",
-      "status": "pending",
-      "priority": "critical",
-      "estimatedHours": 1,
-      "subtasks": [
-        "Test with 5+ diverse games across genres",
-        "Manually validate 5 game assessments (80%+ should match manual review)",
-        "Test error scenarios (crash, no load, slow load)",
-        "Verify graceful degradation without crashes",
-        "Code review for clarity and documentation",
-        "Verify file structure matches specifications"
-      ],
-      "dependencies": [
-        "validation-3"
-      ],
-      "validation": "All success criteria met: 3+ games tested, 80%+ accuracy achieved, robust error handling"
+  "master": {
+    "tasks": [
+      {
+        "id": "layer1-1",
+        "title": "Project Setup & Browserbase Integration",
+        "description": "Initialize TypeScript project, configure Browserbase SDK, set up basic file structure and environment variables",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 1,
+        "day": 1,
+        "estimatedHours": 2,
+        "subtasks": [
+          "Install Bun and project dependencies (@browserbasehq/stagehand, ai, typescript)",
+          "Create .env file with Browserbase API credentials",
+          "Set up TypeScript configuration and project structure",
+          "Create src/ directory with index.ts and types.ts",
+          "Write basic project documentation"
+        ],
+        "dependencies": [],
+        "validation": "Can run `bun index.ts` without errors"
+      },
+      {
+        "id": "layer1-2",
+        "title": "Basic Browser Control",
+        "description": "Load URL in headless browser, wait for page load, close browser cleanly",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 1,
+        "day": 1,
+        "estimatedHours": 2,
+        "subtasks": [
+          "Integrate Browserbase SDK to initialize browser sessions",
+          "Implement loadGame() function that accepts URL",
+          "Add page load waiting logic with timeout",
+          "Implement browser cleanup on completion",
+          "Handle connection errors and timeouts"
+        ],
+        "dependencies": [
+          "layer1-1"
+        ],
+        "validation": "Can load https://www.google.com and capture page state"
+      },
+      {
+        "id": "layer1-3",
+        "title": "Screenshot Capture System",
+        "description": "Take single screenshot, save to file system, generate unique filename",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 1,
+        "day": 1,
+        "estimatedHours": 1.5,
+        "subtasks": [
+          "Implement captureScreenshot() function",
+          "Create file structure: test-results/{game-id}/{timestamp}/",
+          "Generate unique filenames for screenshots",
+          "Save PNG files to disk",
+          "Return file path to caller"
+        ],
+        "dependencies": [
+          "layer1-2"
+        ],
+        "validation": "Can load a game and save one screenshot to ./test-results/"
+      },
+      {
+        "id": "layer2-1",
+        "title": "Stagehand Integration",
+        "description": "Install and configure Stagehand for AI-powered button detection and clicking",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 2,
+        "day": 2,
+        "estimatedHours": 2,
+        "subtasks": [
+          "Install @browserbasehq/stagehand library",
+          "Initialize Stagehand with browser instance",
+          "Implement act() wrapper for button detection",
+          "Test button clicking on sample game",
+          "Implement fallback to Playwright if Stagehand fails"
+        ],
+        "dependencies": [
+          "layer1-2"
+        ],
+        "validation": "Can detect and click a 'Start' or 'Play' button using Stagehand"
+      },
+      {
+        "id": "layer2-2a",
+        "title": "Action Queue System",
+        "description": "Create data structure and queue management for storing and executing actions",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 2,
+        "day": 2,
+        "estimatedHours": 1,
+        "subtasks": [
+          "Define Action interface (type, target, parameters)",
+          "Create ActionQueue class with enqueue/dequeue/peek",
+          "Implement action history tracking",
+          "Add metadata collection (timestamp, result)"
+        ],
+        "dependencies": [
+          "layer2-1"
+        ],
+        "validation": "Can enqueue and dequeue actions, history is tracked"
+      },
+      {
+        "id": "layer2-2b",
+        "title": "Observe Function & State Detection",
+        "description": "Implement page state capturing to detect game status and changes",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 2,
+        "day": 2,
+        "estimatedHours": 1,
+        "subtasks": [
+          "Create observe() function to capture page state",
+          "Implement DOM element detection",
+          "Capture page title, URL, and visible text",
+          "Store state snapshots for comparison"
+        ],
+        "dependencies": [
+          "layer2-1"
+        ],
+        "validation": "Can capture page state and detect element presence"
+      },
+      {
+        "id": "layer2-2c",
+        "title": "Act Function & Action Execution",
+        "description": "Implement action execution for click, type, and keyboard inputs",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 2,
+        "day": 2,
+        "estimatedHours": 1,
+        "subtasks": [
+          "Implement click action execution",
+          "Implement type action for text input",
+          "Implement keyboard actions (arrow keys, spacebar, etc)",
+          "Add error handling for failed actions"
+        ],
+        "dependencies": [
+          "layer2-1",
+          "layer2-2a"
+        ],
+        "validation": "Can execute click, type, and keyboard actions successfully"
+      },
+      {
+        "id": "layer2-2d",
+        "title": "State Transition Detection",
+        "description": "Detect when game progresses to new levels or screens",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 2,
+        "day": 2,
+        "estimatedHours": 0.5,
+        "subtasks": [
+          "Compare consecutive page states for differences",
+          "Detect new game screens (DOM changes)",
+          "Track level/screen progression",
+          "Flag state transitions for logging"
+        ],
+        "dependencies": [
+          "layer2-2b",
+          "layer2-2c"
+        ],
+        "validation": "Can detect screen/level transitions and log them"
+      },
+      {
+        "id": "layer2-3a",
+        "title": "Timeout Management System",
+        "description": "Implement multi-level timeout system (page load, action, total test)",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 2,
+        "day": 2,
+        "estimatedHours": 1,
+        "subtasks": [
+          "Create TimeoutManager class with multiple timeout levels",
+          "Implement global test timeout (5 minutes = 300000ms)",
+          "Add per-action timeout (30 seconds default)",
+          "Add page load timeout (10 seconds default)",
+          "Implement timeout warnings and graceful cancellation"
+        ],
+        "dependencies": [
+          "layer2-2d"
+        ],
+        "validation": "Can set and enforce multiple timeout levels"
+      },
+      {
+        "id": "layer2-3b",
+        "title": "Retry Logic with Exponential Backoff",
+        "description": "Implement page load retry mechanism with exponential backoff",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 2,
+        "day": 2,
+        "estimatedHours": 0.5,
+        "subtasks": [
+          "Implement retry counter and backoff calculation",
+          "Create exponential backoff (1s, 2s, 4s for 3 attempts)",
+          "Log retry attempts with timing",
+          "Return error after max retries exceeded"
+        ],
+        "dependencies": [
+          "layer2-3a"
+        ],
+        "validation": "Can retry page loads with appropriate backoff timing"
+      },
+      {
+        "id": "layer2-3c",
+        "title": "Crash & Hang Detection",
+        "description": "Detect and handle page crashes, freezes, and blank screens",
+        "status": "completed",
+        "priority": "critical",
+        "layer": 2,
+        "day": 2,
+        "estimatedHours": 0.5,
+        "subtasks": [
+          "Detect blank/black screenshots (potential crash)",
+          "Monitor console errors for crash indicators",
+          "Track action count limit (50 max actions to prevent loops)",
+          "Flag and return error on detected crash"
+        ],
+        "dependencies": [
+          "layer2-3a"
+        ],
+        "validation": "Can detect crashes and stop execution gracefully"
+      },
+      {
+        "id": "layer3-1",
+        "title": "Multi-Screenshot Capture System",
+        "description": "Capture 3-5 screenshots at key moments (baseline, during interaction, end state)",
+        "status": "completed",
+        "priority": "high",
+        "layer": 3,
+        "day": 3,
+        "estimatedHours": 1.5,
+        "subtasks": [
+          "Modify captureScreenshot() to support multiple captures",
+          "Implement strategic timing for screenshot capture",
+          "Capture baseline screenshot before any interaction",
+          "Capture after each major action (button click, etc)",
+          "Capture final state or error state",
+          "Store with consistent naming and timestamps"
+        ],
+        "dependencies": [
+          "layer2-2"
+        ],
+        "validation": "Can capture 3-5 screenshots during a game test, all saved with timestamps"
+      },
+      {
+        "id": "layer3-2",
+        "title": "Console Log Capture",
+        "description": "Hook into browser console, capture errors/warnings/info, save to file",
+        "status": "completed",
+        "priority": "high",
+        "layer": 3,
+        "day": 3,
+        "estimatedHours": 1.5,
+        "subtasks": [
+          "Implement console.log/warn/error interception",
+          "Capture console messages in real-time",
+          "Filter and categorize by severity (error, warning, info)",
+          "Save logs to console.log file",
+          "Include timestamps for each message",
+          "Handle console errors from game JavaScript"
+        ],
+        "dependencies": [
+          "layer1-2"
+        ],
+        "validation": "Console logs are captured and saved to test-results/game-id/console.log"
+      },
+      {
+        "id": "layer3-3",
+        "title": "Structured File Organization & Manifest",
+        "description": "Create directory structure, generate manifest.json, link screenshots to timeline",
+        "status": "completed",
+        "priority": "high",
+        "layer": 3,
+        "day": 3,
+        "estimatedHours": 1,
+        "subtasks": [
+          "Create directory structure test-results/{game-id}/{timestamp}/",
+          "Generate unique game-id and timestamp",
+          "Create manifest.json listing all artifacts",
+          "Link screenshots with timestamps and descriptions",
+          "Include metadata (actions, screens navigated, errors)",
+          "Verify file system structure on completion"
+        ],
+        "dependencies": [
+          "layer3-1",
+          "layer3-2"
+        ],
+        "validation": "All test artifacts organized in structured directory with manifest.json"
+      },
+      {
+        "id": "layer4-1",
+        "title": "LLM Integration & Vercel AI SDK Setup",
+        "description": "Set up Vercel AI SDK, connect to LLM provider (OpenAI/Anthropic/Google)",
+        "status": "completed",
+        "priority": "high",
+        "layer": 4,
+        "day": 4,
+        "estimatedHours": 1.5,
+        "subtasks": [
+          "Install Vercel AI SDK (ai package)",
+          "Configure LLM provider (Anthropic Claude 3.5 Sonnet recommended)",
+          "Set up API key from .env",
+          "Implement basic LLM call function",
+          "Test with simple text prompt",
+          "Handle API errors and timeouts"
+        ],
+        "dependencies": [
+          "layer1-1"
+        ],
+        "validation": "Can call LLM and receive response with Vercel AI SDK"
+      },
+      {
+        "id": "layer4-2a",
+        "title": "Image Processing & Base64 Encoding",
+        "description": "Convert screenshots to LLM-compatible format (base64 encoding)",
+        "status": "completed",
+        "priority": "high",
+        "layer": 4,
+        "day": 4,
+        "estimatedHours": 0.5,
+        "subtasks": [
+          "Read PNG files from disk",
+          "Convert images to base64 format",
+          "Validate base64 output",
+          "Create image batch for multi-screenshot submission"
+        ],
+        "dependencies": [
+          "layer4-1",
+          "layer3-1"
+        ],
+        "validation": "Can convert screenshots to base64 suitable for LLM APIs"
+      },
+      {
+        "id": "layer4-2b",
+        "title": "Prompt Design & Testing",
+        "description": "Create and validate evaluation prompts for LLM game analysis",
+        "status": "completed",
+        "priority": "high",
+        "layer": 4,
+        "day": 4,
+        "estimatedHours": 1,
+        "subtasks": [
+          "Design evaluation prompt with 3 criteria: successful_load, responsive_controls, stable",
+          "Include console logs in prompt context",
+          "Format metadata for LLM consumption",
+          "Create prompt template with variable placeholders",
+          "Test prompt with sample screenshots and logs"
+        ],
+        "dependencies": [
+          "layer4-1",
+          "layer4-2a",
+          "layer3-2"
+        ],
+        "validation": "Can submit complete prompt to LLM with images and logs"
+      },
+      {
+        "id": "layer4-2c",
+        "title": "JSON Schema & Response Validation",
+        "description": "Define and validate LLM response schema for evaluation results",
+        "status": "completed",
+        "priority": "high",
+        "layer": 4,
+        "day": 4,
+        "estimatedHours": 0.5,
+        "subtasks": [
+          "Implement JSON schema for LLM responses",
+          "Create validation function for response structure",
+          "Handle schema violations gracefully",
+          "Return validation errors to caller"
+        ],
+        "dependencies": [
+          "layer4-2b"
+        ],
+        "validation": "Can validate LLM responses against schema, reject invalid responses"
+      },
+      {
+        "id": "layer4-3a",
+        "title": "Response Parsing & Validation",
+        "description": "Extract and validate LLM JSON response structure",
+        "status": "completed",
+        "priority": "high",
+        "layer": 4,
+        "day": 4,
+        "estimatedHours": 0.5,
+        "subtasks": [
+          "Parse JSON from LLM response",
+          "Extract evaluation fields (successful_load, responsive_controls, stable)",
+          "Validate required fields are present",
+          "Handle malformed responses gracefully"
+        ],
+        "dependencies": [
+          "layer4-2c"
+        ],
+        "validation": "Can parse LLM JSON and extract evaluation fields"
+      },
+      {
+        "id": "layer4-3b",
+        "title": "Playability Score Calculation",
+        "description": "Convert LLM evaluation to 0-100 playability score",
+        "status": "completed",
+        "priority": "high",
+        "layer": 4,
+        "day": 4,
+        "estimatedHours": 1,
+        "subtasks": [
+          "Weight evaluation criteria (load, controls, stability)",
+          "Calculate score based on boolean and confidence values",
+          "Extract and format issues with severity levels",
+          "Generate recommendations from LLM output",
+          "Apply score penalties for console errors"
+        ],
+        "dependencies": [
+          "layer4-3a"
+        ],
+        "validation": "Can calculate playability score and identify issues"
+      },
+      {
+        "id": "layer4-3c",
+        "title": "Fallback Heuristics & Edge Cases",
+        "description": "Handle LLM failures and implement fallback scoring",
+        "status": "completed",
+        "priority": "high",
+        "layer": 4,
+        "day": 4,
+        "estimatedHours": 0.5,
+        "subtasks": [
+          "Implement fallback scoring if LLM fails (use console errors, screenshot analysis)",
+          "Calculate confidence score based on LLM certainty",
+          "Flag low-confidence results for review",
+          "Handle missing or incomplete LLM responses"
+        ],
+        "dependencies": [
+          "layer4-3b"
+        ],
+        "validation": "Can score games even if LLM fails, confidence scores are calculated"
+      },
+      {
+        "id": "layer5-1",
+        "title": "Report Generation & JSON Output",
+        "description": "Format evaluation results as JSON, conform to output schema, include artifact paths",
+        "status": "completed",
+        "priority": "high",
+        "layer": 5,
+        "day": 4,
+        "estimatedHours": 1.5,
+        "subtasks": [
+          "Implement reportGenerator module",
+          "Create TestResult schema with all required fields",
+          "Aggregate data from all modules (browser, capture, evaluator)",
+          "Validate output against JSON schema",
+          "Include screenshot and log file paths",
+          "Format timestamps in ISO8601 format",
+          "Calculate total execution time"
+        ],
+        "dependencies": [
+          "layer4-3",
+          "layer3-3"
+        ],
+        "validation": "Can generate valid JSON report conforming to TestResult schema"
+      },
+      {
+        "id": "layer5-2",
+        "title": "CLI Interface Implementation",
+        "description": "Parse command-line arguments, add options (timeout, screenshots, output dir), display progress",
+        "status": "completed",
+        "priority": "high",
+        "layer": 5,
+        "day": 4,
+        "estimatedHours": 1.5,
+        "subtasks": [
+          "Install commander or arg parsing library",
+          "Create CLI interface: qa-agent <game-url>",
+          "Add options: --timeout, --screenshots, --output, --headed",
+          "Implement progress logging to terminal",
+          "Display colored output (pass=green, fail=red)",
+          "Print summary at completion with file paths"
+        ],
+        "dependencies": [
+          "layer5-1"
+        ],
+        "validation": "Can run `bun run index.ts <url>` with options, see progress and results"
+      },
+      {
+        "id": "layer5-3",
+        "title": "Programmatic API Implementation",
+        "description": "Export testGame() function, make Lambda-compatible, return Promise with results",
+        "status": "completed",
+        "priority": "medium",
+        "layer": 5,
+        "day": 4,
+        "estimatedHours": 1,
+        "subtasks": [
+          "Export testGame() as main API function",
+          "Implement TypeScript interfaces for inputs/outputs",
+          "Make compatible with Lambda execution environment",
+          "Handle environment variable configuration",
+          "Support programmatic error handling",
+          "Write usage example in examples/simple-test.ts"
+        ],
+        "dependencies": [
+          "layer5-2"
+        ],
+        "validation": "Can import and call testGame() from another TypeScript file"
+      },
+      {
+        "id": "layer6-1",
+        "title": "Edge Case Handling & Robustness Testing",
+        "description": "Test with broken games, non-games, slow-loading games, verify graceful degradation",
+        "status": "pending",
+        "priority": "medium",
+        "layer": 6,
+        "day": 5,
+        "estimatedHours": 2,
+        "subtasks": [
+          "Test with intentionally broken game (404, timeout, errors)",
+          "Test with non-game website (Google, Wikipedia)",
+          "Test with extremely slow-loading game",
+          "Test with game that crashes during execution",
+          "Verify partial results returned on failure",
+          "Document edge cases and behaviors"
+        ],
+        "dependencies": [
+          "layer5-3"
+        ],
+        "validation": "System handles 5+ edge cases gracefully without crashing"
+      },
+      {
+        "id": "layer6-2",
+        "title": "Error Message Refinement & User Experience",
+        "description": "Improve error clarity, add troubleshooting hints, handle unexpected failures gracefully",
+        "status": "pending",
+        "priority": "medium",
+        "layer": 6,
+        "day": 5,
+        "estimatedHours": 1.5,
+        "subtasks": [
+          "Review all error messages for clarity",
+          "Add actionable troubleshooting hints",
+          "Improve timeout/retry error messaging",
+          "Add context to LLM call failures",
+          "Create error categorization (user error vs system error)",
+          "Implement graceful degradation everywhere"
+        ],
+        "dependencies": [
+          "layer6-1"
+        ],
+        "validation": "All error messages are clear and actionable"
+      },
+      {
+        "id": "layer6-3",
+        "title": "Documentation & Demo",
+        "description": "Write comprehensive README, add inline comments, create demo video, document limitations",
+        "status": "pending",
+        "priority": "medium",
+        "layer": 6,
+        "day": 5,
+        "estimatedHours": 2,
+        "subtasks": [
+          "Write comprehensive README with setup instructions",
+          "Document all CLI options and examples",
+          "Add inline code comments for complex functions",
+          "Create architecture diagram",
+          "Document known limitations and edge cases",
+          "Write troubleshooting section",
+          "Record 2-5 minute demo video"
+        ],
+        "dependencies": [
+          "layer6-2"
+        ],
+        "validation": "README is complete, demo video recorded, code is well-commented"
+      },
+      {
+        "id": "validation-1",
+        "title": "End-to-End Testing (Puzzle Game)",
+        "description": "Test against simple puzzle game (tic-tac-toe), verify all systems work together",
+        "status": "completed",
+        "priority": "critical",
+        "estimatedHours": 1,
+        "subtasks": [
+          "Test with Tic-Tac-Toe: https://codepen.io/coding_dev/full/xxVWKqj",
+          "Verify game loads and renders",
+          "Verify clicks are registered",
+          "Verify screenshots are captured",
+          "Verify LLM evaluation returns accurate result",
+          "Verify JSON report is valid"
+        ],
+        "dependencies": [
+          "layer6-3"
+        ],
+        "validation": "Game test completes with pass/fail status and playability score"
+      },
+      {
+        "id": "validation-2",
+        "title": "End-to-End Testing (Platformer Game)",
+        "description": "Test against platformer game, verify multi-level navigation and robust scoring",
+        "status": "completed",
+        "priority": "critical",
+        "estimatedHours": 1,
+        "subtasks": [
+          "Find and test a simple platformer game",
+          "Verify agent navigates multiple screens/levels",
+          "Verify state transitions are detected",
+          "Verify playability assessment is accurate",
+          "Compare LLM score to manual assessment"
+        ],
+        "dependencies": [
+          "layer6-3"
+        ],
+        "validation": "Platformer test completes with accurate playability assessment"
+      },
+      {
+        "id": "validation-3",
+        "title": "End-to-End Testing (Idle/Clicker Game)",
+        "description": "Test against idle clicker game (Cookie Clicker), verify continuous interaction",
+        "status": "completed",
+        "priority": "critical",
+        "estimatedHours": 1,
+        "subtasks": [
+          "Test with Cookie Clicker: https://orteil.dashnet.org/cookieclicker/",
+          "Verify agent can click repeatedly and detect state changes",
+          "Verify game doesn't timeout during continuous interaction",
+          "Verify console logs are captured if any",
+          "Verify accurate playability assessment"
+        ],
+        "dependencies": [
+          "layer6-3"
+        ],
+        "validation": "Idle game test shows accurate interaction and stability assessment"
+      },
+      {
+        "id": "validation-4",
+        "title": "Success Criteria Verification",
+        "description": "Verify all MVP success criteria are met: 3+ diverse games tested, 80%+ accuracy, graceful error handling, clean codebase",
+        "status": "pending",
+        "priority": "critical",
+        "estimatedHours": 1,
+        "subtasks": [
+          "Test with 5+ diverse games across genres",
+          "Manually validate 5 game assessments (80%+ should match manual review)",
+          "Test error scenarios (crash, no load, slow load)",
+          "Verify graceful degradation without crashes",
+          "Code review for clarity and documentation",
+          "Verify file structure matches specifications"
+        ],
+        "dependencies": [
+          "validation-3"
+        ],
+        "validation": "All success criteria met: 3+ games tested, 80%+ accuracy achieved, robust error handling"
+      }
+    ],
+    "metadata": {
+      "project": "DreamUp QA Pipeline",
+      "version": "1.0.0",
+      "created": "2025-11-04",
+      "description": "Autonomous AI agent for testing browser games"
     }
-  ]
+  }
 }
