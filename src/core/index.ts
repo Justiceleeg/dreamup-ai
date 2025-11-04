@@ -62,6 +62,12 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     interactor.setPage(page);
 
     try {
+      // Configure screenshot strategy based on screenshotCount config
+      // If screenshotCount >= 3, capture intermediate screenshots (up to 3)
+      // If screenshotCount < 3, only capture initial and final
+      const captureIntermediates = (config.screenshotCount || 5) >= 3;
+      interactor.setScreenshotStrategy(captureIntermediates);
+
       // Analyze game and build smart action set
       await interactor.initializeInteraction(playwrightPage, initialScreenshotPath);
 
@@ -77,6 +83,7 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
       const maxConsecutiveFailures = 3; // Stop if 3 actions fail in a row
 
       console.log(`📍 Executing up to ${maxActions} actions (${(maxInteractionTime / 1000).toFixed(1)}s available)...`);
+      console.log(`📸 Screenshot strategy: ${captureIntermediates ? 'capture intermediates (max 3)' : 'initial + final only'}`);
 
       for (let actionNum = 0; actionNum < maxActions; actionNum++) {
         // Check if we're running out of time
@@ -98,10 +105,9 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
         if (stateChanged) {
           successfulActions++;
           consecutiveFailures = 0;
-          console.log(`✓ Action ${actionNum + 1} caused state change`);
         } else {
           consecutiveFailures++;
-          console.log(`ℹ Action ${actionNum + 1} did not cause visible state change (${consecutiveFailures}/${maxConsecutiveFailures})`);
+          console.log(`ℹ No state change (${consecutiveFailures}/${maxConsecutiveFailures})`);
 
           // Stop if too many consecutive failures
           if (consecutiveFailures >= maxConsecutiveFailures) {
@@ -110,6 +116,9 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
           }
         }
       }
+
+      // Capture final screenshot after interaction completes
+      await interactor.captureFinalScreenshot(evidence);
 
       console.log(
         `\n✓ Interaction complete - ${interactor.getActionHistory().length} actions executed, ${successfulActions} caused state changes`

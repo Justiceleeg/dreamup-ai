@@ -28,11 +28,21 @@ export class ImprovedGameInteractor {
   private currentActionIndex: number = 0;
   private failedActions: Map<string, number> = new Map(); // Track failures for retry logic
   private screenshotPaths: string[] = [];
+  private intermediateScreenshotCount: number = 0; // Track intermediate screenshots (max 3)
+  private captureIntermediateScreenshots: boolean = true; // Configurable based on screenshotCount
 
   constructor() {
     this.gameAnalyzer = new GameAnalyzer();
     this.actionSetBuilder = new ActionSetBuilder();
     this.stateDetector = new StateChangeDetector();
+  }
+
+  /**
+   * Configure screenshot capture strategy
+   * @param captureIntermediates - Whether to capture intermediate screenshots (true if screenshotCount >= 3)
+   */
+  setScreenshotStrategy(captureIntermediates: boolean): void {
+    this.captureIntermediateScreenshots = captureIntermediates;
   }
 
   /**
@@ -74,6 +84,31 @@ export class ImprovedGameInteractor {
     }
 
     this.screenshotPaths = [screenshotPath];
+    this.intermediateScreenshotCount = 0; // Reset intermediate counter
+  }
+
+  /**
+   * Capture final screenshot after all interactions
+   * Should be called after the action loop completes
+   *
+   * @param evidence - EvidenceCapture instance for screenshots
+   */
+  async captureFinalScreenshot(evidence: EvidenceCapture): Promise<void> {
+    try {
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) {
+        console.warn('⚠ Could not capture final screenshot - no pages available');
+        return;
+      }
+
+      const finalScreenshotPath = await evidence.captureScreenshot(pages[0], 'Final state');
+      this.screenshotPaths.push(finalScreenshotPath);
+      console.log(`✓ Final screenshot captured`);
+    } catch (error) {
+      console.warn(
+        `⚠ Could not capture final screenshot: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   /**
@@ -177,7 +212,7 @@ export class ImprovedGameInteractor {
 
   /**
    * Execute interaction cycle with state change detection
-   * Captures screenshot after action and compares with before
+   * Only captures screenshot if state changed and within intermediate limit
    *
    * @param evidence - EvidenceCapture instance for screenshots
    * @param beforeScreenshot - Path to screenshot before action
@@ -197,14 +232,13 @@ export class ImprovedGameInteractor {
     // Small wait for changes to settle
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    // Capture after screenshot
+    // Capture after screenshot for comparison
     const pages = (this.stagehand as any).context?.pages?.();
     if (!pages || pages.length === 0) {
       return false;
     }
 
     const afterScreenshotPath = await evidence.captureScreenshot(pages[0], 'After action');
-    this.screenshotPaths.push(afterScreenshotPath);
 
     // Detect state change
     const stateChange = this.stateDetector.compareScreenshots(beforeScreenshot, afterScreenshotPath);
@@ -213,6 +247,17 @@ export class ImprovedGameInteractor {
       console.log(
         `✓ State changed detected (confidence: ${stateChange.confidence}%): ${stateChange.description}`
       );
+
+      // Only keep screenshot if we're capturing intermediates and haven't hit the limit
+      if (this.captureIntermediateScreenshots && this.intermediateScreenshotCount < 3) {
+        this.screenshotPaths.push(afterScreenshotPath);
+        this.intermediateScreenshotCount++;
+        console.log(
+          `  Screenshot captured (intermediate ${this.intermediateScreenshotCount}/3)`
+        );
+      } else {
+        console.log(`  Skipping intermediate screenshot (limit reached or not configured)`);
+      }
     } else {
       console.log(`ℹ No state change detected: ${stateChange.description}`);
     }

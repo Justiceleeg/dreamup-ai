@@ -53,18 +53,49 @@ pnpm dlx tsx ./src/index.ts https://example.com/game
 
 - **[GETTING_STARTED.md](./GETTING_STARTED.md)** - Setup and configuration
 - **[CLAUDE.md](./CLAUDE.md)** - Runtime requirements
-- **[LAYER1_SUMMARY.md](./LAYER1_SUMMARY.md)** - Implementation details
-- **[TEST_RESULTS.md](./TEST_RESULTS.md)** - Test validation
+- **[src/README.md](./src/README.md)** - Architecture and module structure
+- **[docs/LAYER1_SUMMARY.md](./docs/LAYER1_SUMMARY.md)** - Implementation history
+- **[docs/TEST_RESULTS.md](./docs/TEST_RESULTS.md)** - Test validation
 
 ## 🎯 Current Status
 
-**Layer 1: Foundation** ✅ Complete and Tested
+**Layers 1-5: Core System** ✅ Complete and Functional
 
-- ✅ Project setup with TypeScript
-- ✅ Browser automation with Stagehand/Browserbase
-- ✅ Screenshot capture and artifact management
-- ✅ CLI interface
-- ✅ 5/5 tests passing
+### Layer 1: Foundation ✅
+- ✅ TypeScript project setup
+- ✅ Browserbase & Stagehand integration
+- ✅ Screenshot capture system
+
+### Layer 2: Interaction ✅
+- ✅ Stagehand V3 integration with Browserbase
+- ✅ AI-powered action detection and execution
+- ✅ Keyboard (Space, Enter, Arrow keys, WASD) and click actions
+- ✅ Game state change detection via screenshot comparison
+- ✅ Action history tracking and retry logic
+
+### Layer 3: Evidence ✅
+- ✅ Multi-screenshot capture (3-5 per test)
+- ✅ Console log capture and analysis
+- ✅ Structured file organization
+- ✅ Manifest generation with metadata
+
+### Layer 4: AI Evaluation ✅
+- ✅ OpenAI Vision API integration (game analysis)
+- ✅ GPT-4o playability assessment
+- ✅ Playability score calculation (0-100)
+- ✅ Issue identification and severity classification
+- ✅ Fallback scoring on API failures
+
+### Layer 5: Output & API ✅
+- ✅ JSON report generation with full schema
+- ✅ CLI interface with options (timeout, screenshots, output dir)
+- ✅ Programmatic API (testGame function)
+
+### Validated Features
+- ✅ 2048 Game: Arrow keys working, state changes detected (90-95/100 score)
+- ✅ Pac-Man Game: Space key working (95/100 score)
+- ✅ Game Analysis: Vision API identifying game controls with 100% confidence
+- ✅ Screenshot Comparison: Detecting game state changes from tiles merging, position changes
 
 ## 💻 Usage
 
