@@ -1,5 +1,3 @@
-#!/usr/bin/env bun
-
 /**
  * DreamUp QA Pipeline - Main Entry Point
  *
@@ -27,7 +25,8 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
   const startTime = Date.now();
   const agent = new BrowserAgent(config.timeout);
   const evidence = new EvidenceCapture(config.gameUrl, config.outputDir);
-  const interactor = new ImprovedGameInteractor();
+  // Disable pre-action analysis to save time - we already analyzed the game upfront
+  const interactor = new ImprovedGameInteractor(false);
   let evaluator: AIEvaluator | null = null;
 
   try {

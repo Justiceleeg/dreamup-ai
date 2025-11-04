@@ -1,0 +1,196 @@
+🎮 Starting QA test for: https://www.nytimes.com/games/wordle/index.html
+[2025-11-04 14:42:09.356 -0600] [32mINFO[39m: [36mUsing Browserbase credentials[39m
+    [35mcategory[39m: "init"
+[2025-11-04 14:42:09.356 -0600] [32mINFO[39m: [36mStarting browserbase session[39m
+    [35mcategory[39m: "init"
+[2025-11-04 14:42:09.356 -0600] [32mINFO[39m: [36mCreating new browserbase session...[39m
+    [35mcategory[39m: "init"
+✓ Browserbase connection initialized
+🌐 Loading game from: https://www.nytimes.com/games/wordle/index.html
+✓ Page created
+[2025-11-04 14:42:11.993 -0600] [32mINFO[39m: [36mBrowserbase session started[39m
+    [35mcategory[39m: "init"
+    [35msessionUrl[39m: "https://www.browserbase.com/sessions/2eca83dc-c77e-459f-8cfa-e0ac10199cec"
+    [35mdebugUrl[39m: "https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/2eca83dc-c77e-459f-8cfa-e0ac10199cec/devtools/page/A8EA01CA15897F31C30B2CACA801F924?debug=true"
+    [35msessionId[39m: "2eca83dc-c77e-459f-8cfa-e0ac10199cec"
+[2025-11-04 14:42:12.351 -0600] [32mINFO[39m: [36mConnecting to local browser[39m
+    [35mcategory[39m: "init"
+✓ Page loaded
+✓ Console capture configured
+📄 Page title: Wordle — The New York Times
+🔗 Current URL: https://www.nytimes.com/games/wordle/index.html
+✓ Test directory created: test-results/nytimescom-7c060522/2025-11-04T20-42-09
+📸 Capturing screenshot: screenshot-000.png
+✓ Screenshot written to: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-000.png
+✓ Screenshot saved: screenshot-000.png
+
+🤖 Beginning intelligent game interaction...
+🎮 Initializing improved game interactor...
+🔍 Starting game analysis...
+📄 Analyzing game from HTML...
+✓ HTML analysis complete: confidence 65%
+✓ Using HTML analysis (confidence: 65%)
+✓ Game identified: Wordle — The New York Times
+  Confidence: 65%
+🎯 Building action set for: Wordle — The New York Times
+   Keys: 
+   Mouse: click
+   Start Action: button (Play)
+   → Will click button labeled: "Play"
+✓ Generated 11 actions
+✓ Action set built: 11 actions
+📍 Executing up to 10 actions (20.0s available)...
+📸 Screenshot strategy: capture intermediates (max 3)
+
+📍 Action 1/10
+🔍 Analyzing game state before action...
+⚠ Gameplay blocked by: Main screen
+   Game ready: false, Available controls: mouse click
+🎯 Executing action 1/11: click
+🖱️  Clicking: Click Play
+  Using text-matching click...
+  Finding button with text: "Play"
+✓ Clicked button with text "Play"
+✓ Test directory created: test-results/nytimescom-7c060522/2025-11-04T20-42-09
+📸 Capturing screenshot: screenshot-001.png
+✓ Screenshot written to: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-001.png
+✓ Screenshot saved: screenshot-001.png
+ℹ Modal detected, attempting to close...
+🖱️  Clicking: Close modal
+  Attempting to close modal...
+✓ Closed modal
+✓ Modal closed successfully
+✓ Test directory created: test-results/nytimescom-7c060522/2025-11-04T20-42-09
+📸 Capturing screenshot: screenshot-002.png
+✓ Screenshot written to: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-002.png
+✓ Screenshot saved: screenshot-002.png
+
+📍 Action 2/10
+🔍 Analyzing game state before action...
+   Game ready: true, Available controls: mouse click
+🎯 Executing action 2/11: key
+⌨️  Pressing key: Space
+  Using Stagehand.act() for: Press the Space key
+✓ Keyboard action executed: Space
+[2025-11-04 14:42:34.681 -0600] [32mINFO[39m: [36mresponse[39m
+    [35mcategory[39m: "aisdk"
+    [35mresponse[39m: {
+      "object": {
+        "elementId": "36-290",
+        "description": "Button labeled 'enter' on the on-screen keyboard to submit or confirm input",
+        "method": "press",
+        "arguments": [
+          "Space"
+        ],
+        "twoStep": false
+      },
+      "usage": {
+        "inputTokens": 2387,
+        "outputTokens": 41,
+        "totalTokens": 2428,
+        "reasoningTokens": 0,
+        "cachedInputTokens": 0
+      },
+      "finishReason": "stop"
+    }
+[2025-11-04 14:42:34.682 -0600] [32mINFO[39m: [36mpressing key[39m
+    [35mcategory[39m: "action"
+    [35mkey[39m: "Space"
+    [35mxpath[39m: "xpath=/html[1]/body[1]/div[2]/div[1]/div[4]/main[1]/div[2]/div[3]/button[1]"
+[2025-11-04 14:42:34.691 -0600] [32mINFO[39m: [36maction, checking for page navigation[39m
+    [35mcategory[39m: "action"
+    [35mxpath[39m: "xpath=/html[1]/body[1]/div[2]/div[1]/div[4]/main[1]/div[2]/div[3]/button[1]"
+[2025-11-04 14:42:34.706 -0600] [32mINFO[39m: [36mno new (frame) URL detected[39m
+    [35mcategory[39m: "action"
+    [35murl[39m: "https://www.nytimes.com/games/wordle/index.html"
+🔄 Re-analyzing game after startup (no blocking UI) to detect actual controls...
+🎮 Analyzing game from screenshot with vision API...
+✓ Game analysis complete: 2048
+  Type: canvas
+  Keys: ArrowUp, ArrowDown, ArrowLeft, ArrowRight
+✓ Updated game analysis: "2048" - Found 4 keyboard keys: ArrowUp, ArrowDown, ArrowLeft, ArrowRight
+🎯 Building action set for: 2048
+   Keys: ArrowUp, ArrowDown, ArrowLeft, ArrowRight
+   Mouse: 
+   Start Action: key
+   → Will press Space/Enter to start
+✓ Generated 13 actions
+⬆️  Action set updated: 11 → 13 actions
+✓ Test directory created: test-results/nytimescom-7c060522/2025-11-04T20-42-09
+📸 Capturing screenshot: screenshot-003.png
+✓ Screenshot written to: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-003.png
+✓ Screenshot saved: screenshot-003.png
+ℹ No state change detected: Screenshots are identical (no state change detected)
+ℹ No state change (1/3)
+ℹ Time limit reached (25.2s), stopping interaction
+✓ Test directory created: test-results/nytimescom-7c060522/2025-11-04T20-42-09
+📸 Capturing screenshot: screenshot-004.png
+✓ Screenshot written to: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-004.png
+✓ Screenshot saved: screenshot-004.png
+✓ Final screenshot captured
+
+✓ Interaction complete - 2 actions executed, 1 caused state changes
+📊 Control response rate: 50.0% (1/2)
+✓ Test directory created: test-results/nytimescom-7c060522/2025-11-04T20-42-09
+✓ Console logs saved: console.log
+✓ Test directory created: test-results/nytimescom-7c060522/2025-11-04T20-42-09
+✓ Manifest saved: manifest.json
+
+🔍 Evaluating game playability with AI...
+🤖 Starting AI evaluation of game playability...
+✓ Loaded screenshot: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-000.png
+✓ Loaded screenshot: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-001.png
+✓ Loaded screenshot: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-002.png
+✓ Loaded screenshot: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-003.png
+✓ Loaded screenshot: test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-004.png
+📸 Sending screenshots and logs to GPT-4V for analysis...
+Sending 5 screenshot(s) and prompt to gpt-4o...
+✅ AI evaluation complete
+
+✅ Test completed - Playability Score: 40/100 (Confidence: 85%)
+📁 Results saved to: test-results/nytimescom-7c060522/2025-11-04T20-42-09
+✓ Browser resources cleaned up
+✅ Test completed
+{
+  "status": "fail",
+  "gameUrl": "https://www.nytimes.com/games/wordle/index.html",
+  "playability_score": 40,
+  "confidence": 85,
+  "timestamp": "2025-11-04T20:42:45.508Z",
+  "execution_time_ms": 36156,
+  "issues": [
+    {
+      "type": "unresponsive",
+      "severity": "major",
+      "description": "Game controls are not responsive to user input",
+      "detected_at_ms": 0
+    },
+    {
+      "type": "unresponsive",
+      "severity": "critical",
+      "description": "50% control response rate indicates most actions did not cause expected changes."
+    }
+  ],
+  "screenshots": [
+    "test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-000.png",
+    "test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-001.png",
+    "test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-002.png",
+    "test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-003.png",
+    "test-results/nytimescom-7c060522/2025-11-04T20-42-09/screenshot-004.png"
+  ],
+  "console_logs": "test-results/nytimescom-7c060522/2025-11-04T20-42-09/console.log",
+  "metadata": {
+    "actions_performed": 2,
+    "screens_navigated": 1,
+    "screenshots_captured": 3,
+    "browser_errors": 0,
+    "agent_version": "2.0.0",
+    "evaluation_reasoning": "The game appears to load successfully, as no issues like blank screens or rendering errors were noted in the screenshots. However, the control response rate is only 50%, indicating a critical issue with unresponsive controls. Despite having some visible changes, half of the actions did not produce the expected results. No crashes or freezes were reported, suggesting good stability. Given the critical responsiveness issue, the playability score is significantly impacted. A confidence score of 85 is given, reflecting high certainty in this analysis based on the provided data.",
+    "objective_metrics": {
+      "control_response_rate": 50,
+      "successful_actions": 1,
+      "total_actions_attempted": 2,
+      "intermediate_screenshots": 1
+    }
+  }
+}

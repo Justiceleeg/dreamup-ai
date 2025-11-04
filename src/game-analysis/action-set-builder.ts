@@ -25,6 +25,47 @@ export class ActionSetBuilder {
     console.log(`🎯 Building action set for: ${analysis.gameName}`);
     console.log(`   Keys: ${analysis.keyboardKeys.join(', ')}`);
     console.log(`   Mouse: ${analysis.mouseActions.join(', ')}`);
+    console.log(`   Start Action: ${analysis.startAction}${analysis.startActionLabel ? ` (${analysis.startActionLabel})` : ''}`);
+
+    // Priority 0: Close modals first if present
+    if (analysis.hasModal) {
+      console.log(`   → Will close modal/dialog first`);
+      actions.push({
+        type: 'click',
+        target: 'modal:close', // Special target for modal close buttons
+        value: 'Close modal',
+        timestamp: Date.now(),
+      });
+    }
+
+    // Priority 1: Execute the start action (determined by game analysis)
+    if (analysis.startAction === 'button' && !analysis.hasModal) {
+      // Click the specific button identified in analysis (but not if we're closing a modal)
+      // Only click if it's explicitly a "Play" or "Start" type button
+      if (analysis.startActionLabel && (
+        analysis.startActionLabel.toLowerCase().includes('play') ||
+        analysis.startActionLabel.toLowerCase().includes('start') ||
+        analysis.startActionLabel.toLowerCase().includes('begin')
+      )) {
+        console.log(`   → Will click button labeled: "${analysis.startActionLabel}"`);
+        actions.push({
+          type: 'click',
+          target: `button:contains("${analysis.startActionLabel}")`, // Target specific button by label
+          value: `Click ${analysis.startActionLabel}`,
+          timestamp: Date.now(),
+        });
+      }
+      // Otherwise, don't click - the game is likely auto-playable
+    } else if (analysis.startAction === 'key') {
+      // Use a start key (Space or Enter typically)
+      console.log(`   → Will press Space/Enter to start`);
+      actions.push({
+        type: 'key',
+        value: 'Space',
+        timestamp: Date.now(),
+      });
+    }
+    // If startAction === 'auto', no startup action needed
 
     // Priority 1: Try to start the game with common start keys
     const startKeys = this.getStartKeys(analysis);
@@ -46,9 +87,25 @@ export class ActionSetBuilder {
       });
     }
 
-    // Priority 3: Add action keys (spacebar, etc.)
+    // Priority 3: Add action keys (spacebar, letters, etc.)
+    // For letter-based games, sample representative letters instead of all 26
     const actionKeys = this.getActionKeys(analysis);
-    for (const key of actionKeys) {
+    let sampledKeys = actionKeys;
+
+    // If we have many letter keys (e.g., all 26), sample just a few for efficiency
+    if (actionKeys.length > 10) {
+      const letterKeys = actionKeys.filter(k => /^[a-z]$/.test(k));
+      const otherKeys = actionKeys.filter(k => !/^[a-z]$/.test(k));
+
+      // Keep common, frequently-used letters: A, E, I, O, U, R, S, T, N, L
+      const frequentLetters = ['a', 'e', 'i', 'o', 'u', 'r', 's', 't', 'n', 'l'];
+      const sampledLetters = frequentLetters.filter(l => letterKeys.includes(l));
+
+      sampledKeys = [...sampledLetters, ...otherKeys];
+      console.log(`   Letter sampling: ${letterKeys.length} → ${sampledLetters.length} representative letters`);
+    }
+
+    for (const key of sampledKeys) {
       actions.push({
         type: 'key',
         value: key,
@@ -56,20 +113,18 @@ export class ActionSetBuilder {
       });
     }
 
-    // Priority 4: Add mouse clicks if supported
-    if (analysis.mouseActions.includes('click')) {
-      // Click center of game area (common pattern)
+    // Priority 4: Add additional mouse clicks if not already added
+    if (!analysis.mouseActions.includes('click') && !analysis.gameName.toLowerCase().includes('wordle')) {
       actions.push({
         type: 'click',
-        target: 'canvas:center', // Special target for canvas center
+        target: 'canvas:center',
         value: 'Click game area',
         timestamp: Date.now(),
       });
 
-      // Click any visible buttons
       actions.push({
         type: 'click',
-        target: 'button', // Click first button
+        target: 'button',
         value: 'Click button',
         timestamp: Date.now(),
       });
