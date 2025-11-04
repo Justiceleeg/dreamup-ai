@@ -14,6 +14,7 @@ import { GameAnalyzer } from '../game-analysis/game-analyzer.js';
 import { GameStateAnalyzer } from '../game-analysis/game-state-analyzer.js';
 import { ActionSetBuilder } from '../game-analysis/action-set-builder.js';
 import { StateChangeDetector } from '../detection/state-change-detector.js';
+import { ObserveStateDetector } from '../detection/observe-state-detector.js';
 import { EvidenceCapture } from '../evidence/evidence-capture.js';
 
 /**
@@ -26,6 +27,7 @@ export class ImprovedGameInteractor {
   private gameStateAnalyzer: GameStateAnalyzer;
   private actionSetBuilder: ActionSetBuilder;
   private stateDetector: StateChangeDetector;
+  private observeDetector: ObserveStateDetector;
   private actionHistory: Action[] = [];
   private currentActionSet: Action[] = [];
   private currentActionIndex: number = 0;
@@ -37,12 +39,14 @@ export class ImprovedGameInteractor {
   private gameReanalyzed: boolean = false; // Track if we've already re-analyzed the game
   private successfulActions: number = 0; // Track actions that caused state changes
   private maxSuccessfulActions: number = 2; // Stop after 2 successful actions
+  private useObserveDetection: boolean = true; // Use observe-based detection instead of screenshots
 
   constructor(analyzeBeforeAction: boolean = true) {
     this.gameAnalyzer = new GameAnalyzer();
     this.gameStateAnalyzer = new GameStateAnalyzer();
     this.actionSetBuilder = new ActionSetBuilder();
     this.stateDetector = new StateChangeDetector();
+    this.observeDetector = new ObserveStateDetector();
     this.analyzeBeforeAction = analyzeBeforeAction;
     this.successfulActions = 0;
   }
@@ -65,6 +69,8 @@ export class ImprovedGameInteractor {
     if (playwrightPage) {
       this.playwrightPage = playwrightPage;
     }
+    // Initialize the observe detector with Stagehand for reliable state detection
+    this.observeDetector.setStagehand(stagehand);
   }
 
   /**
@@ -515,8 +521,17 @@ export class ImprovedGameInteractor {
       }
     }
 
-    // Detect state change
-    const stateChange = this.stateDetector.compareScreenshots(beforeScreenshot, afterScreenshotPath);
+    // Detect state change using observe-based detection (more reliable than screenshots)
+    let stateChange;
+
+    if (this.useObserveDetection) {
+      // Use Stagehand observe() for more reliable detection
+      const actionDescription = `Action #${this.currentActionIndex}`;
+      stateChange = await this.observeDetector.observeActionEffect(actionDescription, 2000);
+    } else {
+      // Fallback to screenshot comparison
+      stateChange = this.stateDetector.compareScreenshots(beforeScreenshot, afterScreenshotPath);
+    }
 
     if (stateChange.changed) {
       console.log(
