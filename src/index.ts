@@ -68,8 +68,8 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     const executedActions = await orchestrator.executeMultipleCycles(actionCount);
 
     // Capture screenshot after interactions
-    if (executedActions.length > 0) {
-      await evidence.captureScreenshot(page, 'After autonomous interaction');
+    if (executedActions.length > 0 && stagehandPage) {
+      await evidence.captureScreenshot(stagehandPage, 'After autonomous interaction');
     }
 
     // Save evidence artifacts

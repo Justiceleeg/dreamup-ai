@@ -154,33 +154,36 @@ export class EvidenceCapture {
       console.log(`📸 Capturing screenshot: ${filename}`);
 
       // Capture screenshot - handle both Stagehand and Playwright page objects
-      let screenshot: Buffer | null = null;
+      // Note: For remote browsers (Browserbase), we can't use the path parameter
+      // Instead, we capture as a buffer and write it locally
+      let screenshotBuffer: Buffer | null = null;
 
       try {
-        // Try Stagehand's screenshot method first
         if (typeof (page as any).screenshot === 'function') {
-          screenshot = await (page as any).screenshot({ path: filepath });
-        } else {
-          throw new Error('No screenshot method found');
-        }
-      } catch (methodError) {
-        // If that fails, it might be a raw Playwright page from context.pages()
-        console.warn(`⚠ Stagehand screenshot failed, trying Playwright API: ${methodError instanceof Error ? methodError.message : String(methodError)}`);
+          // Call screenshot WITHOUT path parameter to get buffer
+          // Then write it to disk locally
+          screenshotBuffer = await (page as any).screenshot();
 
-        // For Playwright pages, we need to use locator or evaluate
-        if (typeof (page as any).locator === 'function') {
-          // This is likely a Playwright page
-          screenshot = await (page as any).screenshot?.({ path: filepath });
-          if (!screenshot) {
-            throw new Error('Playwright screenshot method failed');
+          if (!screenshotBuffer) {
+            throw new Error('Screenshot method returned no buffer');
           }
         } else {
-          throw new Error('Unable to determine page type for screenshot');
+          throw new Error('No screenshot method found on page object');
         }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`✗ Failed to capture screenshot: ${errorMsg}`);
+        throw new Error(`Screenshot capture failed: ${errorMsg}`);
       }
 
-      if (!screenshot) {
-        console.warn('⚠ Screenshot returned null or undefined, but file may have been created at path');
+      // Now write the buffer to disk locally
+      try {
+        await writeFile(filepath, screenshotBuffer);
+        console.log(`✓ Screenshot written to: ${filepath}`);
+      } catch (writeError) {
+        const writeMsg = writeError instanceof Error ? writeError.message : String(writeError);
+        console.error(`✗ Failed to write screenshot to disk: ${writeMsg}`);
+        throw new Error(`Failed to save screenshot to disk: ${writeMsg}`);
       }
 
       // Get URL and title for metadata
