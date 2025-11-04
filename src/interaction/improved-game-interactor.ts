@@ -218,6 +218,7 @@ export class ImprovedGameInteractor {
     }
 
     const startTime = Date.now();
+    const ACTION_TIMEOUT = 10000; // 10 second max per action
 
     try {
       // Get the actual Playwright page from Stagehand context
@@ -259,7 +260,14 @@ export class ImprovedGameInteractor {
 
             // Use Stagehand's act() for keyboard input (works reliably across different game types)
             console.log(`  Using Stagehand.act() for: ${keyDescription}`);
-            await this.stagehand?.act(keyDescription);
+
+            // Wrap with timeout to prevent hanging actions
+            const actPromise = this.stagehand?.act(keyDescription);
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error(`Action timeout after ${ACTION_TIMEOUT}ms`)), ACTION_TIMEOUT)
+            );
+
+            await Promise.race([actPromise, timeoutPromise]);
             console.log(`✓ Keyboard action executed: ${keyToPress}`);
 
             // Add delay for key press to register
@@ -358,13 +366,18 @@ export class ImprovedGameInteractor {
             } else if (target === 'button') {
               console.log(`  Attempting to click button element...`);
               try {
-                await page.click('button:visible', { timeout: 2000 });
+                await page.click('button:visible', { timeout: 1000 });
                 console.log(`✓ Clicked button element`);
               } catch (buttonError) {
                 console.log(`  Button not found, trying [role="button"]...`);
                 // Fallback: try role=button
-                await page.click('[role="button"]', { timeout: 2000 });
-                console.log(`✓ Clicked [role="button"] element`);
+                try {
+                  await page.click('[role="button"]', { timeout: 1000 });
+                  console.log(`✓ Clicked [role="button"] element`);
+                } catch (roleButtonError) {
+                  console.log(`  No clickable buttons found`);
+                  // Don't throw - allow continuing
+                }
               }
             } else if (target === 'canvas:center') {
               // Click center of page (for canvas-based games)
