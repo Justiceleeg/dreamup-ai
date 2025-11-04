@@ -21,6 +21,7 @@ import { EvidenceCapture } from '../evidence/evidence-capture.js';
  */
 export class ImprovedGameInteractor {
   private stagehand: Stagehand | null = null;
+  private playwrightPage: any = null; // Store the actual Playwright page directly
   private gameAnalyzer: GameAnalyzer;
   private gameStateAnalyzer: GameStateAnalyzer;
   private actionSetBuilder: ActionSetBuilder;
@@ -34,6 +35,8 @@ export class ImprovedGameInteractor {
   private captureIntermediateScreenshots: boolean = true; // Configurable based on screenshotCount
   private analyzeBeforeAction: boolean = true; // Whether to analyze state before each action
   private gameReanalyzed: boolean = false; // Track if we've already re-analyzed the game
+  private successfulActions: number = 0; // Track actions that caused state changes
+  private maxSuccessfulActions: number = 2; // Stop after 2 successful actions
 
   constructor(analyzeBeforeAction: boolean = true) {
     this.gameAnalyzer = new GameAnalyzer();
@@ -41,6 +44,7 @@ export class ImprovedGameInteractor {
     this.actionSetBuilder = new ActionSetBuilder();
     this.stateDetector = new StateChangeDetector();
     this.analyzeBeforeAction = analyzeBeforeAction;
+    this.successfulActions = 0;
   }
 
   /**
@@ -52,10 +56,15 @@ export class ImprovedGameInteractor {
   }
 
   /**
-   * Set the Stagehand instance
+   * Set the Stagehand instance AND the actual Playwright page
+   * @param stagehand - Stagehand instance (for legacy compatibility)
+   * @param playwrightPage - The actual Playwright page object to use for direct keyboard input
    */
-  setPage(stagehand: Stagehand): void {
+  setPage(stagehand: Stagehand, playwrightPage?: any): void {
     this.stagehand = stagehand;
+    if (playwrightPage) {
+      this.playwrightPage = playwrightPage;
+    }
   }
 
   /**
@@ -221,12 +230,10 @@ export class ImprovedGameInteractor {
     const ACTION_TIMEOUT = 10000; // 10 second max per action
 
     try {
-      // Get the actual Playwright page from Stagehand context
-      const pages = (this.stagehand as any).context?.pages?.();
-      if (!pages || pages.length === 0) {
-        throw new Error('No page available');
+      // Use the stored Playwright page directly
+      if (!this.playwrightPage) {
+        throw new Error('No Playwright page available - was setPage() called?');
       }
-      const page = pages[0];
 
       switch (action.type) {
         case 'key': {
@@ -234,44 +241,20 @@ export class ImprovedGameInteractor {
           console.log(`⌨️  Pressing key: ${keyToPress}`);
 
           try {
-            // Map keys to human-readable action descriptions
-            const keyDescriptionMap: { [key: string]: string } = {
-              'ArrowUp': 'Press the Up arrow key',
-              'ArrowDown': 'Press the Down arrow key',
-              'ArrowLeft': 'Press the Left arrow key',
-              'ArrowRight': 'Press the Right arrow key',
-              'Space': 'Press the Space key',
-              'Enter': 'Press the Enter key',
-              'w': 'Press the w key',
-              'a': 'Press the a key',
-              's': 'Press the s key',
-              'd': 'Press the d key',
-              'Escape': 'Press the Escape key',
-              'Backspace': 'Press the Backspace key',
-            };
+            // Use direct keyboard input for faster, more reliable key presses
+            console.log(`  Using Playwright page.keyboard.press() for: ${keyToPress}`);
 
-            // For single letter keys, phrase it as typing
-            let keyDescription: string;
-            if (keyToPress.length === 1 && /[a-z0-9]/i.test(keyToPress)) {
-              keyDescription = `Type the letter "${keyToPress}"`;
-            } else {
-              keyDescription = keyDescriptionMap[keyToPress] || `Press the ${keyToPress} key`;
-            }
-
-            // Use Stagehand's act() for keyboard input (works reliably across different game types)
-            console.log(`  Using Stagehand.act() for: ${keyDescription}`);
-
-            // Wrap with timeout to prevent hanging actions
-            const actPromise = this.stagehand?.act(keyDescription);
+            // Timeout wrapper for keyboard press
+            const keyPromise = this.playwrightPage.keyboard.press(keyToPress);
             const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error(`Action timeout after ${ACTION_TIMEOUT}ms`)), ACTION_TIMEOUT)
+              setTimeout(() => reject(new Error(`Key press timeout after ${ACTION_TIMEOUT}ms`)), ACTION_TIMEOUT)
             );
 
-            await Promise.race([actPromise, timeoutPromise]);
+            await Promise.race([keyPromise, timeoutPromise]);
             console.log(`✓ Keyboard action executed: ${keyToPress}`);
 
             // Add delay for key press to register
-            await new Promise((resolve) => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           } catch (keyError) {
             console.error(`❌ Keyboard action failed for ${keyToPress}: ${keyError}`);
             // Continue instead of throwing - allow system to try next action
@@ -296,7 +279,7 @@ export class ImprovedGameInteractor {
                 console.log(`  Finding button with text: "${buttonText}"`);
 
                 // Use JavaScript to find and click the button by text content
-                const clicked = await page.evaluate((text) => {
+                const clicked = await this.playwrightPage.evaluate((text) => {
                   const buttons = document.querySelectorAll('button, [role="button"]');
                   for (const btn of buttons) {
                     if (btn.textContent && btn.textContent.trim().includes(text)) {
@@ -316,7 +299,7 @@ export class ImprovedGameInteractor {
             } else if (target === 'modal:close') {
               console.log(`  Attempting to close modal...`);
               // Use JavaScript to find and click the modal close button
-              const closed = await page.evaluate(() => {
+              const closed = await this.playwrightPage.evaluate(() => {
                 // Look for modal/dialog close buttons - check aria-label first (most reliable)
                 let closeBtn = document.querySelector('button[aria-label="Close"]');
                 if (closeBtn) {
@@ -366,13 +349,13 @@ export class ImprovedGameInteractor {
             } else if (target === 'button') {
               console.log(`  Attempting to click button element...`);
               try {
-                await page.click('button:visible', { timeout: 1000 });
+                await this.playwrightPage.click('button:visible', { timeout: 1000 });
                 console.log(`✓ Clicked button element`);
               } catch (buttonError) {
                 console.log(`  Button not found, trying [role="button"]...`);
                 // Fallback: try role=button
                 try {
-                  await page.click('[role="button"]', { timeout: 1000 });
+                  await this.playwrightPage.click('[role="button"]', { timeout: 1000 });
                   console.log(`✓ Clicked [role="button"] element`);
                 } catch (roleButtonError) {
                   console.log(`  No clickable buttons found`);
@@ -381,21 +364,21 @@ export class ImprovedGameInteractor {
               }
             } else if (target === 'canvas:center') {
               // Click center of page (for canvas-based games)
-              const viewportSize = page.viewportSize();
+              const viewportSize = this.playwrightPage.viewportSize();
               if (viewportSize) {
                 const centerX = viewportSize.width / 2;
                 const centerY = viewportSize.height / 2;
                 console.log(`  Clicking viewport center (${centerX}, ${centerY})`);
-                await page.click('body', { position: { x: centerX, y: centerY } });
+                await this.playwrightPage.click('body', { position: { x: centerX, y: centerY } });
                 console.log(`✓ Clicked viewport center`);
               } else {
                 console.log(`  No viewport size, clicking body center`);
-                await page.click('body');
+                await this.playwrightPage.click('body');
               }
             } else {
               // Custom selector
               console.log(`  Clicking selector: ${target}`);
-              await page.click(target);
+              await this.playwrightPage.click(target);
               console.log(`✓ Clicked: ${target}`);
             }
           } catch (clickError) {
@@ -540,6 +523,10 @@ export class ImprovedGameInteractor {
         `✓ State changed detected (confidence: ${stateChange.confidence}%): ${stateChange.description}`
       );
 
+      // Track successful (state-changing) action
+      this.successfulActions++;
+      console.log(`✅ Successful action #${this.successfulActions}/${this.maxSuccessfulActions}`);
+
       // Only keep screenshot if we're capturing intermediates and haven't hit the limit
       if (this.captureIntermediateScreenshots && this.intermediateScreenshotCount < 3) {
         this.screenshotPaths.push(afterScreenshotPath);
@@ -549,6 +536,11 @@ export class ImprovedGameInteractor {
         );
       } else {
         console.log(`  Skipping intermediate screenshot (limit reached or not configured)`);
+      }
+
+      // Check if we've reached the goal
+      if (this.shouldStop()) {
+        console.log(`🎯 Reached goal: ${this.maxSuccessfulActions} successful actions detected!`);
       }
     } else {
       console.log(`ℹ No state change detected: ${stateChange.description}`);
@@ -572,6 +564,20 @@ export class ImprovedGameInteractor {
   }
 
   /**
+   * Check if we should stop interaction (reached max successful actions)
+   */
+  shouldStop(): boolean {
+    return this.successfulActions >= this.maxSuccessfulActions;
+  }
+
+  /**
+   * Get number of successful actions (state-changing actions)
+   */
+  getSuccessfulActionCount(): number {
+    return this.successfulActions;
+  }
+
+  /**
    * Reset interactor state
    */
   reset(): void {
@@ -579,6 +585,7 @@ export class ImprovedGameInteractor {
     this.currentActionIndex = 0;
     this.failedActions.clear();
     this.screenshotPaths = [];
+    this.successfulActions = 0;
   }
 
   /**

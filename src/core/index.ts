@@ -39,11 +39,14 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     // Setup evidence capture
     // In Stagehand V3, get the actual page object from context
     const pages = (page as any).context?.pages?.();
-    if (pages && pages.length === 0) {
+    if (!pages || pages.length === 0) {
       throw new Error('No pages available in browser context');
     }
 
     const playwrightPage = pages[0];
+    if (!playwrightPage) {
+      throw new Error('Playwright page is undefined');
+    }
     evidence.setupConsoleCapture(playwrightPage);
 
     // Get page info
@@ -58,7 +61,8 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
 
     // Layer 3-2: Intelligent game analysis and interaction
     console.log('\n🤖 Beginning intelligent game interaction...');
-    interactor.setPage(page);
+    // Pass both the Stagehand instance and the actual Playwright page
+    interactor.setPage(page, playwrightPage);
 
     // Objective metrics (will be populated during interaction)
     let objectiveMetrics: {
@@ -123,6 +127,12 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
             console.log('ℹ Too many consecutive failures, stopping interaction');
             break;
           }
+        }
+
+        // NEW: Stop after 2 successful state-changing actions (unified approach)
+        if (interactor.shouldStop()) {
+          console.log(`✅ Reached success goal (${interactor.getSuccessfulActionCount()}/2 actions), stopping interaction`);
+          break;
         }
       }
 

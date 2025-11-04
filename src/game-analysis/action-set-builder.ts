@@ -20,12 +20,23 @@ export class ActionSetBuilder {
    * @returns Prioritized list of actions to try
    */
   buildActionSet(analysis: GameAnalysis): Action[] {
+    // Use simplified action set for better Wordle support
+    return this.buildSimplifiedActionSet(analysis);
+  }
+
+  /**
+   * Build a simplified action set optimized for direct keyboard input
+   * Uses only: Arrow keys, WASD, Space, Enter, Backspace, Esc
+   * This approach is more reliable for games like Wordle
+   *
+   * @param analysis - Game analysis from GameAnalyzer
+   * @returns Prioritized list of simplified actions
+   */
+  private buildSimplifiedActionSet(analysis: GameAnalysis): Action[] {
     const actions: Action[] = [];
 
-    console.log(`🎯 Building action set for: ${analysis.gameName}`);
-    console.log(`   Keys: ${analysis.keyboardKeys.join(', ')}`);
-    console.log(`   Mouse: ${analysis.mouseActions.join(', ')}`);
-    console.log(`   Start Action: ${analysis.startAction}${analysis.startActionLabel ? ` (${analysis.startActionLabel})` : ''}`);
+    console.log(`🎯 Building simplified action set for: ${analysis.gameName}`);
+    console.log(`   Using: Arrow keys, WASD, Space, Enter, Backspace, Escape`);
 
     // Priority 0: Close modals first if present
     if (analysis.hasModal) {
@@ -56,88 +67,45 @@ export class ActionSetBuilder {
         });
       }
       // Otherwise, don't click - the game is likely auto-playable
-    } else if (analysis.startAction === 'key') {
-      // Use a start key (Space or Enter typically)
-      console.log(`   → Will press Space/Enter to start`);
-      actions.push({
-        type: 'key',
-        value: 'Space',
-        timestamp: Date.now(),
-      });
-    }
-    // If startAction === 'auto', no startup action needed
-
-    // Priority 1: Try to start the game with common start keys
-    const startKeys = this.getStartKeys(analysis);
-    for (const key of startKeys) {
-      actions.push({
-        type: 'key',
-        value: key,
-        timestamp: Date.now(),
-      });
     }
 
-    // Priority 2: Add movement keys
-    const movementKeys = this.getMovementKeys(analysis);
-    for (const key of movementKeys) {
-      actions.push({
-        type: 'key',
-        value: key,
-        timestamp: Date.now(),
-      });
-    }
+    // Priority 2: Simplified action set - only core keys
+    // Space/Enter for start
+    actions.push({
+      type: 'key',
+      value: 'Space',
+      timestamp: Date.now(),
+    });
+    actions.push({
+      type: 'key',
+      value: 'Enter',
+      timestamp: Date.now(),
+    });
 
-    // Priority 3: Add action keys (spacebar, letters, etc.)
-    // For letter-based games, sample representative letters instead of all 26
-    const actionKeys = this.getActionKeys(analysis);
-    let sampledKeys = actionKeys;
+    // Arrow keys for navigation (all games that use arrows should support all 4)
+    actions.push({ type: 'key', value: 'ArrowUp', timestamp: Date.now() });
+    actions.push({ type: 'key', value: 'ArrowDown', timestamp: Date.now() });
+    actions.push({ type: 'key', value: 'ArrowLeft', timestamp: Date.now() });
+    actions.push({ type: 'key', value: 'ArrowRight', timestamp: Date.now() });
 
-    // If we have many letter keys (e.g., all 26), sample just a few for efficiency
-    if (actionKeys.length > 10) {
-      const letterKeys = actionKeys.filter(k => /^[a-z]$/.test(k));
-      const otherKeys = actionKeys.filter(k => !/^[a-z]$/.test(k));
+    // WASD for alternative navigation
+    actions.push({ type: 'key', value: 'w', timestamp: Date.now() });
+    actions.push({ type: 'key', value: 'a', timestamp: Date.now() });
+    actions.push({ type: 'key', value: 's', timestamp: Date.now() });
+    actions.push({ type: 'key', value: 'd', timestamp: Date.now() });
 
-      // Keep common, frequently-used letters: A, E, I, O, U, R, S, T, N, L
-      const frequentLetters = ['a', 'e', 'i', 'o', 'u', 'r', 's', 't', 'n', 'l'];
-      const sampledLetters = frequentLetters.filter(l => letterKeys.includes(l));
+    // Function keys
+    actions.push({ type: 'key', value: 'Escape', timestamp: Date.now() });
+    actions.push({ type: 'key', value: 'Backspace', timestamp: Date.now() });
 
-      sampledKeys = [...sampledLetters, ...otherKeys];
-      console.log(`   Letter sampling: ${letterKeys.length} → ${sampledLetters.length} representative letters`);
-    }
-
-    for (const key of sampledKeys) {
-      actions.push({
-        type: 'key',
-        value: key,
-        timestamp: Date.now(),
-      });
-    }
-
-    // Priority 4: Add additional mouse clicks if not already added
-    if (!analysis.mouseActions.includes('click') && !analysis.gameName.toLowerCase().includes('wordle')) {
-      actions.push({
-        type: 'click',
-        target: 'canvas:center',
-        value: 'Click game area',
-        timestamp: Date.now(),
-      });
-
-      actions.push({
-        type: 'click',
-        target: 'button',
-        value: 'Click button',
-        timestamp: Date.now(),
-      });
-    }
-
-    // Priority 5: Wait actions for letting game settle
+    // Wait for game to settle
     actions.push({
       type: 'wait',
       duration: 1000,
       timestamp: Date.now(),
     });
 
-    console.log(`✓ Generated ${actions.length} actions`);
+    console.log(`✓ Generated ${actions.length} actions (simplified set)`);
     return actions;
   }
 
