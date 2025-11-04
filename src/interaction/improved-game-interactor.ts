@@ -15,6 +15,7 @@ import { GameStateAnalyzer } from '../game-analysis/game-state-analyzer.js';
 import { ActionSetBuilder } from '../game-analysis/action-set-builder.js';
 import { StateChangeDetector } from '../detection/state-change-detector.js';
 import { ObserveStateDetector } from '../detection/observe-state-detector.js';
+import { StagehandActInteractor } from './stagehand-act-interactor.js';
 import { EvidenceCapture } from '../evidence/evidence-capture.js';
 
 /**
@@ -28,6 +29,7 @@ export class ImprovedGameInteractor {
   private actionSetBuilder: ActionSetBuilder;
   private stateDetector: StateChangeDetector;
   private observeDetector: ObserveStateDetector;
+  private actInteractor: StagehandActInteractor | null = null; // NEW: Use stagehand.act() for actions
   private actionHistory: Action[] = [];
   private currentActionSet: Action[] = [];
   private currentActionIndex: number = 0;
@@ -40,6 +42,7 @@ export class ImprovedGameInteractor {
   private successfulActions: number = 0; // Track actions that caused state changes
   private maxSuccessfulActions: number = 2; // Stop after 2 successful actions
   private useObserveDetection: boolean = true; // Use observe-based detection instead of screenshots
+  private useStagehandAct: boolean = true; // NEW: Use stagehand.act() instead of direct keyboard/click
 
   constructor(analyzeBeforeAction: boolean = true) {
     this.gameAnalyzer = new GameAnalyzer();
@@ -69,8 +72,10 @@ export class ImprovedGameInteractor {
     if (playwrightPage) {
       this.playwrightPage = playwrightPage;
     }
-    // Initialize the observe detector with Stagehand for reliable state detection
-    this.observeDetector.setStagehand(stagehand);
+    // Initialize the observe detector with Stagehand and page for reliable state detection
+    this.observeDetector.setStagehand(stagehand, playwrightPage);
+    // Initialize the stagehand.act() interactor
+    this.actInteractor = new StagehandActInteractor(stagehand);
   }
 
   /**
@@ -89,6 +94,15 @@ export class ImprovedGameInteractor {
 
       console.log(`✓ Game identified: ${gameAnalysis.gameName}`);
       console.log(`  Confidence: ${gameAnalysis.confidence}%`);
+
+      // Pass game context to the act interactor for better instruction generation
+      if (this.actInteractor) {
+        this.actInteractor.setGameContext({
+          gameName: gameAnalysis.gameName,
+          gameType: gameAnalysis.gameType as 'dom' | 'canvas' | 'hybrid',
+          controls: gameAnalysis.controls,
+        });
+      }
 
       // Build action set based on analysis
       this.currentActionSet = this.actionSetBuilder.buildActionSet(gameAnalysis);
@@ -135,14 +149,65 @@ export class ImprovedGameInteractor {
 
   /**
    * Execute next action from the action set with retry logic
+   * Uses stagehand.act() instead of direct keyboard/click for better compatibility
    *
    * @returns Action result
    */
   async executeNextAction(): Promise<ActionResult | null> {
-    if (!this.stagehand) {
+    if (!this.stagehand || !this.actInteractor) {
       throw new Error('No Stagehand instance set');
     }
 
+    if (this.currentActionIndex >= this.currentActionSet.length) {
+      console.log('ℹ All actions exhausted, cycling through action set again');
+      this.currentActionIndex = 0;
+    }
+
+    const action = this.currentActionSet[this.currentActionIndex];
+    this.currentActionIndex++;
+
+    console.log(`🎯 Executing action ${this.currentActionIndex}/${this.currentActionSet.length}: ${action.type}`);
+
+    try {
+      // Use stagehand.act() to execute the action
+      const instruction = this.actInteractor.actionToInstruction(action);
+      const result = await this.actInteractor.executeActionWithAct(instruction, action.type);
+
+      // Track in history
+      this.actionHistory.push(action);
+
+      // Reset failure count on success
+      const actionKey = `${action.type}-${action.value || action.target}`;
+      this.failedActions.delete(actionKey);
+
+      return {
+        success: result.success,
+        executedAt: Date.now(),
+        duration: result.duration,
+      };
+    } catch (error) {
+      // Track failure
+      const actionKey = `${action.type}-${action.value || action.target}`;
+      const failureCount = (this.failedActions.get(actionKey) || 0) + 1;
+      this.failedActions.set(actionKey, failureCount);
+
+      console.warn(`⚠ Action failed (attempt ${failureCount}): ${error}`);
+
+      // If action failed too many times, skip it and try next
+      if (failureCount > 2) {
+        console.log(`⏭ Skipping repeatedly-failed action, moving to next...`);
+        this.failedActions.delete(actionKey);
+      }
+
+      return null;
+    }
+  }
+
+  /**
+   * Legacy method for state analysis before action
+   * Kept for compatibility but simplified
+   */
+  private async analyzeBeforeActionLegacy(): Promise<void> {
     // Analyze game state before taking action (if enabled)
     if (this.analyzeBeforeAction && this.screenshotPaths.length > 0) {
       try {

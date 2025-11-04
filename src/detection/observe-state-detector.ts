@@ -27,21 +27,33 @@ export interface StateChangeResult {
  */
 export class ObserveStateDetector {
   private stagehand: Stagehand | null = null;
+  private page: any = null;
 
-  constructor(stagehand?: Stagehand) {
+  constructor(stagehand?: Stagehand, page?: any) {
     this.stagehand = stagehand || null;
+    this.page = page || null;
   }
 
   /**
-   * Set the Stagehand instance
+   * Set the Stagehand instance and the Playwright page
    */
-  setStagehand(stagehand: Stagehand): void {
+  setStagehand(stagehand: Stagehand, page?: any): void {
     this.stagehand = stagehand;
+    if (page) {
+      this.page = page;
+    }
+  }
+
+  /**
+   * Set the Playwright page directly
+   */
+  setPage(page: any): void {
+    this.page = page;
   }
 
   /**
    * Observe page for state changes during an action execution
-   * Starts observation before the action and waits for changes
+   * Uses Stagehand's observe() API correctly (V3) to discover possible actions
    *
    * @param action - Description of action being taken (for logging)
    * @param timeout - How long to observe (in ms)
@@ -62,12 +74,12 @@ export class ObserveStateDetector {
       // Get initial page state
       const initialState = await this.capturePageState();
 
-      // Use stagehand.observe() to watch for changes
-      // observe() returns information about what changed on the page
-      const observationResult = await (this.stagehand as any).observe({
-        timeout,
-        instruction: `Execute this action and report any changes: ${action}`,
-      });
+      // Use stagehand.observe() to discover possible actions on the page
+      // In Stagehand V3, observe() takes a string instruction and returns Action[]
+      // This helps us understand what's visible and interactable on the page
+      const observedActions = await this.stagehand.observe(action);
+
+      console.log(`  Found ${observedActions?.length || 0} observable actions on page`);
 
       // Capture new page state after observation
       const finalState = await this.capturePageState();
@@ -79,20 +91,20 @@ export class ObserveStateDetector {
         console.log(`✓ State change detected during observation`);
         return {
           changed: true,
-          confidence: 90, // High confidence when observe() detects changes
-          description: 'Page state changed (detected by Stagehand observation)',
+          confidence: 90, // High confidence when states differ
+          description: 'Page state changed (detected by state comparison)',
           observationDetails: {
             domChanges: true,
-            htmlChanged: observationResult?.changes?.html ? 'yes' : 'no',
-            elementsChanged: observationResult?.changes?.elementCount || 0,
+            htmlChanged: initialState.html !== finalState.html ? 'yes' : 'no',
+            elementsChanged: finalState.elementCount - initialState.elementCount,
           },
         };
       } else {
         console.log(`ℹ  No state change detected during observation`);
         return {
           changed: false,
-          confidence: 85, // High confidence when observe() confirms no changes
-          description: 'Page state unchanged (verified by observation)',
+          confidence: 85, // High confidence when states are identical
+          description: 'Page state unchanged (verified by state comparison)',
         };
       }
     } catch (error) {
@@ -117,12 +129,19 @@ export class ObserveStateDetector {
     hash: string;
   }> {
     try {
-      if (!this.stagehand) {
-        throw new Error('Stagehand instance not available');
+      // Use the page object if available
+      if (!this.page) {
+        console.warn('⚠  No page object available for state capture');
+        return {
+          html: '',
+          bodyText: '',
+          elementCount: 0,
+          hash: '',
+        };
       }
 
-      // Use stagehand's page evaluation to get page state
-      const state = await (this.stagehand as any).page.evaluate(() => {
+      // Use page.evaluate to get page state
+      const state = await this.page.evaluate(() => {
         return {
           html: document.documentElement.outerHTML.substring(0, 5000), // First 5000 chars to keep it manageable
           bodyText: document.body.innerText.substring(0, 2000), // First 2000 chars of body text
