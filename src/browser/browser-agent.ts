@@ -184,13 +184,22 @@ export class BrowserAgent {
    */
   async cleanup(): Promise<void> {
     try {
+      // Close Stagehand instance (includes browser and Browserbase session cleanup)
       if (this.stagehand) {
-        await this.stagehand.close();
+        try {
+          console.log('  Closing Stagehand instance...');
+          await this.stagehand.close();
+        } catch (closeError) {
+          console.warn(`  Warning during Stagehand close: ${closeError}`);
+          // Continue cleanup even if close fails
+        }
         this.stagehand = null;
       }
 
+      // Mark session as inactive for Browserbase tracking
       if (this.session) {
         this.session.isActive = false;
+        console.log('  Marked Browserbase session as inactive');
       }
 
       console.log('✓ Browser resources cleaned up');
@@ -198,6 +207,7 @@ export class BrowserAgent {
       console.error(
         `Error during cleanup: ${error instanceof Error ? error.message : String(error)}`
       );
+      // Don't throw - we want cleanup to complete even if there are errors
     }
   }
 

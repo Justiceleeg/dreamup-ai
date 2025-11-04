@@ -279,13 +279,39 @@ function setupCLI(): void {
         logLevel: 'info',
       };
 
+      // Set up signal handlers for graceful cleanup
+      let testPromise: Promise<TestResult>;
+      let agentRef: BrowserAgent | null = null;
+
+      const cleanup = async () => {
+        if (agentRef) {
+          console.log('🔄 Cleaning up browser resources...');
+          await agentRef.cleanup();
+        }
+      };
+
+      // Handle process termination signals
+      const signalHandler = async (signal: string) => {
+        console.log(`\n⚠️  Received ${signal}, cleaning up...`);
+        await cleanup();
+        process.exit(1);
+      };
+
+      process.on('SIGINT', () => signalHandler('SIGINT'));
+      process.on('SIGTERM', () => signalHandler('SIGTERM'));
+
       try {
+        // Create agent and store reference for signal handlers
+        const agent = new BrowserAgent(config.timeout);
+        agentRef = agent;
+
         const result = await testGame(config);
         console.log('✅ Test completed');
         console.log(JSON.stringify(result, null, 2));
         process.exit(result.status === 'pass' ? 0 : 1);
       } catch (error) {
         console.error('❌ Test failed:', error);
+        await cleanup();
         process.exit(1);
       }
     });
