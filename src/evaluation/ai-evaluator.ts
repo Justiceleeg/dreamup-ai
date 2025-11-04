@@ -64,12 +64,19 @@ export class AIEvaluator {
    * @param screenshotPaths - Array of screenshot file paths
    * @param consoleLogs - Path to console logs file
    * @param gameUrl - URL of the game being tested
+   * @param objectiveMetrics - Objective metrics from interaction (control response rate, etc.)
    * @returns LLM evaluation result
    */
   async evaluateGamePlayability(
     screenshotPaths: string[],
     consoleLogs?: string,
-    gameUrl?: string
+    gameUrl?: string,
+    objectiveMetrics?: {
+      totalActionsAttempted: number;
+      successfulActions: number;
+      controlsResponseRate: number;
+      intermediateScreenshots: number;
+    }
   ): Promise<LLMEvaluation> {
     console.log('🤖 Starting AI evaluation of game playability...');
 
@@ -83,8 +90,8 @@ export class AIEvaluator {
         consoleLogs_content = fs.readFileSync(consoleLogs, 'utf-8');
       }
 
-      // Build evaluation prompt
-      const prompt = this.buildEvaluationPrompt(gameUrl, consoleLogs_content);
+      // Build evaluation prompt with objective metrics
+      const prompt = this.buildEvaluationPrompt(gameUrl, consoleLogs_content, objectiveMetrics);
 
       console.log('📸 Sending screenshots and logs to GPT-4V for analysis...');
 
@@ -182,13 +189,33 @@ export class AIEvaluator {
    *
    * @param gameUrl - URL of the game
    * @param consoleLogs - Console logs content
+   * @param objectiveMetrics - Objective metrics from interaction
    * @returns Formatted prompt
    */
-  private buildEvaluationPrompt(gameUrl?: string, consoleLogs?: string): string {
+  private buildEvaluationPrompt(
+    gameUrl?: string,
+    consoleLogs?: string,
+    objectiveMetrics?: {
+      totalActionsAttempted: number;
+      successfulActions: number;
+      controlsResponseRate: number;
+      intermediateScreenshots: number;
+    }
+  ): string {
     const gameInfo = gameUrl ? `Game URL: ${gameUrl}\n` : '';
     const consoleSection = consoleLogs
       ? `\nConsole Logs:\n${consoleLogs}\n`
       : '\nNo console logs available.\n';
+
+    const metricsSection = objectiveMetrics
+      ? `\nOBJECTIVE METRICS (Data-Driven Evidence):
+  - Control Response Rate: ${objectiveMetrics.controlsResponseRate.toFixed(1)}% (${objectiveMetrics.successfulActions} of ${objectiveMetrics.totalActionsAttempted} actions caused visible state changes)
+  - State Changes Detected: ${objectiveMetrics.successfulActions}
+  - Screenshot Progression: ${objectiveMetrics.intermediateScreenshots} intermediate screenshots (indicating ${objectiveMetrics.intermediateScreenshots > 0 ? 'visible changes during play' : 'no visible changes during play'})
+
+IMPORTANT: Use these objective metrics as PRIMARY evidence when evaluating "responsive_controls". If control response rate is 0%, the controls are unresponsive regardless of visual appearance.
+`
+      : '';
 
     return `You are an expert game QA analyst. Evaluate the following game screenshots and logs to assess playability.
 
@@ -196,13 +223,17 @@ ${gameInfo}
 
 ${consoleSection}
 
+${metricsSection}
+
 Please analyze:
 1. **Successful Load**: Is the game visible and properly rendered? Check for blank screens, broken images, or rendering errors.
-2. **Responsive Controls**: Do the screenshots show evidence of user interactions working? Look for changed UI states, updated game states, or visual feedback.
+2. **Responsive Controls**: Use the objective metrics above as PRIMARY evidence. A 0% control response rate means controls are unresponsive. Do the screenshots also show evidence of user interactions working? Look for changed UI states, updated game states, or visual feedback.
 3. **Stability**: Are there any signs of crashes, freezes, or errors? Check console logs and visual artifacts.
 
+CRITICAL: If objective metrics show 0% control response rate (0 state changes out of N attempts), you MUST set "responsive_controls" to false and add an issue of type "unresponsive" with severity "critical" describing that no actions caused visible state changes.
+
 Provide a detailed assessment with:
-- A playability score (0-100, where 100 is fully playable)
+- A playability score (0-100, where 100 is fully playable). Use objective metrics to inform this score.
 - A confidence score (0-100, reflecting how certain you are in your assessment)
 - Specific issues found with severity levels
 - Recommendations for fixes

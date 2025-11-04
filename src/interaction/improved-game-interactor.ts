@@ -161,7 +161,8 @@ export class ImprovedGameInteractor {
   }
 
   /**
-   * Execute action with Stagehand
+   * Execute action with Stagehand/Playwright
+   * Uses direct keyboard/click actions instead of AI-powered act()
    */
   private async executeAction(action: Action): Promise<ActionResult> {
     if (!this.stagehand) {
@@ -171,28 +172,75 @@ export class ImprovedGameInteractor {
     const startTime = Date.now();
 
     try {
+      // Get the actual Playwright page from Stagehand context
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) {
+        throw new Error('No page available');
+      }
+      const page = pages[0];
+
       switch (action.type) {
-        case 'key':
-          await this.stagehand.act(`Press the ${action.value} key`);
+        case 'key': {
+          const keyToPress = action.value || 'Space';
+          console.log(`⌨️  Pressing key: ${keyToPress}`);
+
+          // Try using Stagehand's act() method for keyboard input
+          // This uses the underlying browser's actual keyboard input, not synthetic events
+          try {
+            console.log(`  Using Stagehand.act() for keyboard input: ${keyToPress}`);
+
+            // Map keys to human-readable action descriptions
+            const keyDescriptionMap: { [key: string]: string } = {
+              'ArrowUp': 'Press the Up arrow key',
+              'ArrowDown': 'Press the Down arrow key',
+              'ArrowLeft': 'Press the Left arrow key',
+              'ArrowRight': 'Press the Right arrow key',
+              'Space': 'Press the Space key',
+              'Enter': 'Press the Enter key',
+              'w': 'Press the w key',
+              'a': 'Press the a key',
+              's': 'Press the s key',
+              'd': 'Press the d key',
+            };
+
+            const keyDescription = keyDescriptionMap[keyToPress] || `Press the ${keyToPress} key`;
+
+            // Use Stagehand's act() for actual keyboard input
+            // The first parameter should be a string instruction
+            await this.stagehand?.act(keyDescription);
+
+            console.log(`✓ Stagehand keyboard action executed: ${keyToPress}`);
+
+            // Add delay for key press to register
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          } catch (keyError) {
+            console.error(`❌ Stagehand keyboard action failed for ${keyToPress}: ${keyError}`);
+            throw keyError;
+          }
           break;
+        }
 
         case 'click':
-          if (action.target?.includes('center')) {
-            // Click canvas center
-            await this.stagehand.act('Click on the game canvas in the center');
-          } else if (action.target === 'button') {
-            // Click first button
-            await this.stagehand.act('Click the first button on the page');
+          // Use direct click actions on page
+          const viewportSize = page.viewportSize();
+          if (viewportSize) {
+            const centerX = viewportSize.width / 2;
+            const centerY = viewportSize.height / 2;
+            console.log(`🖱️  Clicking at (${centerX}, ${centerY})`);
+            await page.click('body', { position: { x: centerX, y: centerY } });
           } else {
-            // Generic click
-            await this.stagehand.act(`Click on ${action.value || 'the page'}`);
+            // Fallback: click body center
+            console.log(`🖱️  Clicking body (no viewport size)`);
+            await page.click('body');
           }
           break;
 
-        case 'wait':
+        case 'wait': {
           const duration = action.duration || 1000;
+          console.log(`⏳ Waiting ${duration}ms`);
           await new Promise((resolve) => setTimeout(resolve, duration));
           break;
+        }
 
         default:
           throw new Error(`Unknown action type: ${action.type}`);
@@ -204,6 +252,7 @@ export class ImprovedGameInteractor {
         duration: Date.now() - startTime,
       };
     } catch (error) {
+      console.error(`❌ Action execution failed: ${error instanceof Error ? error.message : String(error)}`);
       throw new Error(
         `Failed to execute ${action.type} action: ${error instanceof Error ? error.message : String(error)}`
       );

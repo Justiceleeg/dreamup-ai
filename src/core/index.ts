@@ -61,6 +61,14 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     console.log('\n🤖 Beginning intelligent game interaction...');
     interactor.setPage(page);
 
+    // Objective metrics (will be populated during interaction)
+    let objectiveMetrics: {
+      totalActionsAttempted: number;
+      successfulActions: number;
+      controlsResponseRate: number;
+      intermediateScreenshots: number;
+    } | undefined;
+
     try {
       // Configure screenshot strategy based on screenshotCount config
       // If screenshotCount >= 3, capture intermediate screenshots (up to 3)
@@ -81,6 +89,7 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
       let successfulActions = 0;
       let consecutiveFailures = 0;
       const maxConsecutiveFailures = 3; // Stop if 3 actions fail in a row
+      let totalActionsAttempted = 0;
 
       console.log(`📍 Executing up to ${maxActions} actions (${(maxInteractionTime / 1000).toFixed(1)}s available)...`);
       console.log(`📸 Screenshot strategy: ${captureIntermediates ? 'capture intermediates (max 3)' : 'initial + final only'}`);
@@ -101,6 +110,7 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
 
         // Execute action with state change detection
         const stateChanged = await interactor.executeActionCycleWithDetection(evidence, lastScreenshot);
+        totalActionsAttempted++;
 
         if (stateChanged) {
           successfulActions++;
@@ -120,9 +130,21 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
       // Capture final screenshot after interaction completes
       await interactor.captureFinalScreenshot(evidence);
 
+      // Calculate objective metrics
+      const controlsResponseRate = totalActionsAttempted > 0 ? (successfulActions / totalActionsAttempted) * 100 : 0;
+
       console.log(
         `\n✓ Interaction complete - ${interactor.getActionHistory().length} actions executed, ${successfulActions} caused state changes`
       );
+      console.log(`📊 Control response rate: ${controlsResponseRate.toFixed(1)}% (${successfulActions}/${totalActionsAttempted})`);
+
+      // Store metrics for evaluation
+      objectiveMetrics = {
+        totalActionsAttempted,
+        successfulActions,
+        controlsResponseRate,
+        intermediateScreenshots: interactor.getScreenshotPaths().length - 2, // Exclude initial and final
+      };
     } catch (interactionError) {
       console.warn(
         `⚠ Game interaction error: ${interactionError instanceof Error ? interactionError.message : String(interactionError)}`
@@ -138,10 +160,12 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     // Layer 2: AI Evaluation
     console.log('\n🔍 Evaluating game playability with AI...');
     evaluator = new AIEvaluator();
+
     const evaluation = await evaluator.evaluateGamePlayability(
       screenshotPaths,
       consoleLogPath,
-      config.gameUrl
+      config.gameUrl,
+      objectiveMetrics
     );
 
     // Convert evaluation to issues
@@ -168,10 +192,19 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
       console_logs: consoleLogPath,
       metadata: {
         actions_performed: interactor.getActionHistory().length,
+        screens_navigated: 1, // Single game screen in this test
         screenshots_captured: interactor.getScreenshotPaths().length,
         browser_errors: evidence.getConsoleLogs().filter((l) => l.includes('[error]')).length,
         agent_version: VERSION,
         evaluation_reasoning: evaluation.reasoning,
+        ...(objectiveMetrics && {
+          objective_metrics: {
+            control_response_rate: objectiveMetrics.controlsResponseRate,
+            successful_actions: objectiveMetrics.successfulActions,
+            total_actions_attempted: objectiveMetrics.totalActionsAttempted,
+            intermediate_screenshots: objectiveMetrics.intermediateScreenshots,
+          },
+        }),
       },
     };
 
@@ -214,6 +247,7 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
         screens_navigated: 0,
         browser_errors: 1,
         agent_version: VERSION,
+        evaluation_reasoning: errorMsg,
       },
     };
   } finally {
