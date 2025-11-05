@@ -203,202 +203,6 @@ export class ImprovedGameInteractor {
     }
   }
 
-
-  /**
-   * Execute action with Stagehand/Playwright
-   * Uses direct keyboard/click actions instead of AI-powered act()
-   */
-  private async executeAction(action: Action): Promise<ActionResult> {
-    if (!this.stagehand) {
-      throw new Error('No Stagehand instance');
-    }
-
-    const startTime = Date.now();
-    const ACTION_TIMEOUT = 10000; // 10 second max per action
-
-    try {
-      // Use the stored Playwright page directly
-      if (!this.playwrightPage) {
-        throw new Error('No Playwright page available - was setPage() called?');
-      }
-
-      switch (action.type) {
-        case 'key': {
-          const keyToPress = action.value || 'Space';
-          console.log(`⌨️  Pressing key: ${keyToPress}`);
-
-          try {
-            // Use direct keyboard input for faster, more reliable key presses
-            console.log(`  Using Playwright page.keyboard.press() for: ${keyToPress}`);
-
-            // Timeout wrapper for keyboard press
-            const keyPromise = this.playwrightPage.keyboard.press(keyToPress);
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error(`Key press timeout after ${ACTION_TIMEOUT}ms`)), ACTION_TIMEOUT)
-            );
-
-            await Promise.race([keyPromise, timeoutPromise]);
-            console.log(`✓ Keyboard action executed: ${keyToPress}`);
-
-            // Add delay for key press to register
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          } catch (keyError) {
-            console.error(`❌ Keyboard action failed for ${keyToPress}: ${keyError}`);
-            // Continue instead of throwing - allow system to try next action
-            // This prevents one failed key from stopping all interactions
-            console.log(`   Continuing with next action...`);
-          }
-          break;
-        }
-
-        case 'click': {
-          const target = action.target || 'body';
-          console.log(`🖱️  Clicking: ${action.value || target}`);
-
-          try {
-            // If target contains "contains(", use text matching
-            if (target.includes('contains(')) {
-              console.log(`  Using text-matching click...`);
-              // Extract the text from button:contains("text")
-              const match = target.match(/contains\("([^"]+)"\)/);
-              if (match) {
-                const buttonText = match[1];
-                console.log(`  Finding button with text: "${buttonText}"`);
-
-                // Use JavaScript to find and click the button by text content
-                const clicked = await this.playwrightPage.evaluate((text) => {
-                  const buttons = document.querySelectorAll('button, [role="button"]');
-                  for (const btn of buttons) {
-                    if (btn.textContent && btn.textContent.trim().includes(text)) {
-                      (btn as HTMLElement).click();
-                      return true;
-                    }
-                  }
-                  return false;
-                }, buttonText);
-
-                if (clicked) {
-                  console.log(`✓ Clicked button with text "${buttonText}"`);
-                } else {
-                  throw new Error(`Button with text "${buttonText}" not found`);
-                }
-              }
-            } else if (target === 'modal:close') {
-              console.log(`  Attempting to close modal...`);
-              // Use JavaScript to find and click the modal close button
-              const closed = await this.playwrightPage.evaluate(() => {
-                // Look for modal/dialog close buttons - check aria-label first (most reliable)
-                let closeBtn = document.querySelector('button[aria-label="Close"]');
-                if (closeBtn) {
-                  console.log('Found button with aria-label="Close"');
-                  (closeBtn as HTMLElement).click();
-                  return true;
-                }
-
-                // Look for buttons with aria-label containing "close" (case-insensitive)
-                const allButtons = document.querySelectorAll('button');
-                for (const btn of allButtons) {
-                  const ariaLabel = btn.getAttribute('aria-label') || '';
-                  if (ariaLabel.toLowerCase().includes('close')) {
-                    console.log(`Found close button with aria-label="${ariaLabel}"`);
-                    (btn as HTMLElement).click();
-                    return true;
-                  }
-                }
-
-                // Look for dialogs/modals and find close buttons inside them
-                const dialogs = document.querySelectorAll('[role="dialog"], [aria-modal="true"], .modal, .popup');
-                for (const dialog of dialogs) {
-                  const buttons = dialog.querySelectorAll('button');
-                  for (const btn of buttons) {
-                    const text = btn.textContent?.trim().toLowerCase() || '';
-                    const ariaLabel = btn.getAttribute('aria-label')?.toLowerCase() || '';
-
-                    // Check for close/dismiss/X symbols
-                    if (text === 'close' || text === 'dismiss' || text === '✕' || text === '×' ||
-                        ariaLabel.includes('close') || ariaLabel.includes('dismiss')) {
-                      console.log(`Found close button in dialog: "${text || ariaLabel}"`);
-                      (btn as HTMLElement).click();
-                      return true;
-                    }
-                  }
-                }
-
-                return false;
-              });
-
-              if (closed) {
-                console.log(`✓ Closed modal`);
-              } else {
-                console.error('Modal close button not found');
-                // Don't throw - allow continuing with next action
-              }
-            } else if (target === 'button') {
-              console.log(`  Attempting to click button element...`);
-              try {
-                await this.playwrightPage.click('button:visible', { timeout: 1000 });
-                console.log(`✓ Clicked button element`);
-              } catch (buttonError) {
-                console.log(`  Button not found, trying [role="button"]...`);
-                // Fallback: try role=button
-                try {
-                  await this.playwrightPage.click('[role="button"]', { timeout: 1000 });
-                  console.log(`✓ Clicked [role="button"] element`);
-                } catch (roleButtonError) {
-                  console.log(`  No clickable buttons found`);
-                  // Don't throw - allow continuing
-                }
-              }
-            } else if (target === 'canvas:center') {
-              // Click center of page (for canvas-based games)
-              const viewportSize = this.playwrightPage.viewportSize();
-              if (viewportSize) {
-                const centerX = viewportSize.width / 2;
-                const centerY = viewportSize.height / 2;
-                console.log(`  Clicking viewport center (${centerX}, ${centerY})`);
-                await this.playwrightPage.click('body', { position: { x: centerX, y: centerY } });
-                console.log(`✓ Clicked viewport center`);
-              } else {
-                console.log(`  No viewport size, clicking body center`);
-                await this.playwrightPage.click('body');
-              }
-            } else {
-              // Custom selector
-              console.log(`  Clicking selector: ${target}`);
-              await this.playwrightPage.click(target);
-              console.log(`✓ Clicked: ${target}`);
-            }
-          } catch (clickError) {
-            console.error(`❌ Click action failed: ${clickError}`);
-            console.log(`   Continuing with next action...`);
-          }
-          break;
-        }
-
-        case 'wait': {
-          const duration = action.duration || 1000;
-          console.log(`⏳ Waiting ${duration}ms`);
-          await new Promise((resolve) => setTimeout(resolve, duration));
-          break;
-        }
-
-        default:
-          throw new Error(`Unknown action type: ${action.type}`);
-      }
-
-      return {
-        success: true,
-        executedAt: Date.now(),
-        duration: Date.now() - startTime,
-      };
-    } catch (error) {
-      console.error(`❌ Action execution failed: ${error instanceof Error ? error.message : String(error)}`);
-      throw new Error(
-        `Failed to execute ${action.type} action: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
   /**
    * Execute interaction cycle with state change detection
    * Only captures screenshot if state changed and within intermediate limit
@@ -483,22 +287,23 @@ export class ImprovedGameInteractor {
         console.log(`📖 Modal instructions: ${modalContent.substring(0, 150)}...`);
       }
 
-      // Inject a modal-close action
-      const closeResult = await this.executeAction({
-        type: 'click',
-        target: 'modal:close',
-        value: 'Close modal',
-        timestamp: Date.now(),
-      });
+      // Use StagehandActInteractor to close the modal
+      if (this.actInteractor) {
+        console.log(`🖱️  Clicking: Close modal`);
+        const closeResult = await this.actInteractor.executeActionWithAct(
+          'Close any modal dialogs, overlays, or popup windows by clicking the close button or pressing Escape',
+          'modal-close'
+        );
 
-      if (closeResult) {
-        console.log(`✓ Modal closed successfully`);
-        // Small wait for modal animation
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        // Recapture screenshot after closing modal
-        const afterModalScreenshot = await evidence.captureScreenshot(pagesForScreenshot[0], 'After closing modal');
-        this.screenshotPaths.push(afterModalScreenshot);
-        return true;
+        if (closeResult.success) {
+          console.log(`✓ Modal closed successfully`);
+          // Small wait for modal animation
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          // Recapture screenshot after closing modal
+          const afterModalScreenshot = await evidence.captureScreenshot(pagesForScreenshot[0], 'After closing modal');
+          this.screenshotPaths.push(afterModalScreenshot);
+          return true;
+        }
       }
     }
 
