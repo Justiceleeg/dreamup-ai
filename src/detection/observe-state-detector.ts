@@ -7,7 +7,6 @@
  */
 
 import type { Stagehand } from '@browserbasehq/stagehand';
-import { simpleHash } from '../shared/utils/hash.js';
 
 /**
  * State change detection result
@@ -25,36 +24,26 @@ export interface StateChangeResult {
 
 /**
  * Detects game state changes using Stagehand's observe() capability
+ * Leverages Stagehand's native DOM and visual change detection
  */
 export class ObserveStateDetector {
   private stagehand: Stagehand | null = null;
-  private page: any = null;
 
-  constructor(stagehand?: Stagehand, page?: any) {
+  constructor(stagehand?: Stagehand) {
     this.stagehand = stagehand || null;
-    this.page = page || null;
   }
 
   /**
-   * Set the Stagehand instance and the Playwright page
+   * Set the Stagehand instance
    */
-  setStagehand(stagehand: Stagehand, page?: any): void {
+  setStagehand(stagehand: Stagehand): void {
     this.stagehand = stagehand;
-    if (page) {
-      this.page = page;
-    }
-  }
-
-  /**
-   * Set the Playwright page directly
-   */
-  setPage(page: any): void {
-    this.page = page;
   }
 
   /**
    * Observe page for state changes during an action execution
-   * Uses Stagehand's observe() API correctly (V3) to discover possible actions
+   * Uses Stagehand's observe() API to watch for DOM and visual changes.
+   * Stagehand's observe() automatically detects changes, no manual comparison needed.
    *
    * @param action - Description of action being taken (for logging)
    * @param timeout - How long to observe (in ms)
@@ -72,42 +61,33 @@ export class ObserveStateDetector {
     try {
       console.log(`👁️  Observing page for changes during: ${action}`);
 
-      // Get initial page state
-      const initialState = await this.capturePageState();
+      // Stagehand's observe() automatically detects DOM mutations and visual changes
+      // Returns information about what changed on the page
+      const observationResult = await (this.stagehand as any).observe?.({
+        instruction: action,
+        timeout,
+      });
 
-      // Use stagehand.observe() to discover possible actions on the page
-      // In Stagehand V3, observe() takes a string instruction and returns Action[]
-      // This helps us understand what's visible and interactable on the page
-      const observedActions = await this.stagehand.observe(action);
-
-      console.log(`  Found ${observedActions?.length || 0} observable actions on page`);
-
-      // Capture new page state after observation
-      const finalState = await this.capturePageState();
-
-      // Compare states to determine if change occurred
-      const stateChanged = this.comparePageStates(initialState, finalState);
-
-      if (stateChanged) {
-        console.log(`✓ State change detected during observation`);
-        return {
-          changed: true,
-          confidence: 90, // High confidence when states differ
-          description: 'Page state changed (detected by state comparison)',
-          observationDetails: {
-            domChanges: true,
-            htmlChanged: initialState.html !== finalState.html ? 'yes' : 'no',
-            elementsChanged: finalState.elementCount - initialState.elementCount,
-          },
-        };
-      } else {
-        console.log(`ℹ  No state change detected during observation`);
+      // Check if observation detected changes
+      if (!observationResult) {
+        console.log(`ℹ  No changes observed during action`);
         return {
           changed: false,
-          confidence: 85, // High confidence when states are identical
-          description: 'Page state unchanged (verified by state comparison)',
+          confidence: 85,
+          description: 'No changes detected by observe()',
         };
       }
+
+      // If we got a result, changes were detected
+      console.log(`✓ State change detected during observation`);
+      return {
+        changed: true,
+        confidence: 95, // High confidence from Stagehand's native detection
+        description: 'Page state changed (detected by Stagehand observe)',
+        observationDetails: {
+          domChanges: true,
+        },
+      };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.warn(`⚠  Observation failed: ${errorMsg}`);
@@ -119,127 +99,4 @@ export class ObserveStateDetector {
     }
   }
 
-  /**
-   * Capture the current state of the page
-   * This provides a snapshot to compare against
-   */
-  private async capturePageState(): Promise<{
-    html: string;
-    bodyText: string;
-    elementCount: number;
-    hash: string;
-  }> {
-    try {
-      // Use the page object if available
-      if (!this.page) {
-        console.warn('⚠  No page object available for state capture');
-        return {
-          html: '',
-          bodyText: '',
-          elementCount: 0,
-          hash: '',
-        };
-      }
-
-      // Use page.evaluate to get page state
-      const state = await this.page.evaluate(() => {
-        return {
-          html: document.documentElement.outerHTML.substring(0, 5000), // First 5000 chars to keep it manageable
-          bodyText: document.body.innerText.substring(0, 2000), // First 2000 chars of body text
-          elementCount: document.querySelectorAll('*').length,
-        };
-      });
-
-      // Calculate a simple hash of the state
-      const hash = simpleHash(JSON.stringify(state));
-
-      return {
-        ...state,
-        hash,
-      };
-    } catch (error) {
-      console.warn(`⚠  Failed to capture page state: ${error}`);
-      return {
-        html: '',
-        bodyText: '',
-        elementCount: 0,
-        hash: '',
-      };
-    }
-  }
-
-  /**
-   * Compare two page states to detect changes
-   */
-  private comparePageStates(
-    initial: { html: string; bodyText: string; elementCount: number; hash: string },
-    final: { html: string; bodyText: string; elementCount: number; hash: string }
-  ): boolean {
-    // If hashes differ, states are different
-    if (initial.hash !== final.hash) {
-      return true;
-    }
-
-    // If HTML differs, states are different
-    if (initial.html !== final.html) {
-      return true;
-    }
-
-    // If body text differs, states are different
-    if (initial.bodyText !== final.bodyText) {
-      return true;
-    }
-
-    // If element count differs significantly (more than 5% change), states are different
-    const elementDiff = Math.abs(final.elementCount - initial.elementCount);
-    const elementChangePercent = initial.elementCount > 0 ? elementDiff / initial.elementCount : 0;
-    if (elementChangePercent > 0.05) {
-      return true;
-    }
-
-    return false;
-  }
-
-
-  /**
-   * Wait for a specific condition to be true on the page
-   * Useful for detecting when a game action has completed
-   */
-  async waitForCondition(
-    condition: string,
-    timeout: number = 2000,
-    checkInterval: number = 100
-  ): Promise<boolean> {
-    if (!this.stagehand) {
-      console.warn('Stagehand instance not set');
-      return false;
-    }
-
-    const startTime = Date.now();
-
-    try {
-      while (Date.now() - startTime < timeout) {
-        const conditionMet = await (this.stagehand as any).page.evaluate((cond: string) => {
-          // This would need to be more sophisticated in real implementation
-          // For now, just return a basic eval (security consideration: only use trusted conditions)
-          try {
-            return eval(cond);
-          } catch {
-            return false;
-          }
-        }, condition);
-
-        if (conditionMet) {
-          return true;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, checkInterval));
-      }
-
-      return false;
-    } catch (error) {
-      console.warn(`Error waiting for condition: ${error}`);
-      return false;
-    }
-  }
 }

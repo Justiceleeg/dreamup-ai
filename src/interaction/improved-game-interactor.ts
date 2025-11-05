@@ -72,8 +72,8 @@ export class ImprovedGameInteractor {
     if (playwrightPage) {
       this.playwrightPage = playwrightPage;
     }
-    // Initialize the observe detector with Stagehand and page for reliable state detection
-    this.observeDetector.setStagehand(stagehand, playwrightPage);
+    // Initialize the observe detector with Stagehand for reliable state detection
+    this.observeDetector.setStagehand(stagehand);
     // Initialize the stagehand.act() interactor
     this.actInteractor = new StagehandActInteractor(stagehand);
   }
