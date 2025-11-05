@@ -234,14 +234,170 @@ export class EvidenceCapture {
   }
 
   /**
-   * Setup console logging capture
+   * Setup console logging capture early (before navigation)
+   * Injects script that will be run before any page content loads
    *
-   * @param page - Stagehand page object
+   * @param page - Playwright Page object
+   */
+  async setupEarlyConsoleCapture(page: PageLike): Promise<void> {
+    // Inject a script to capture console calls before navigation
+    // This must happen BEFORE the page navigates
+    if (typeof (page as any).evaluateOnNewDocument === 'function') {
+      try {
+        await (page as any).evaluateOnNewDocument(() => {
+          if (typeof window !== 'undefined') {
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+            const originalInfo = console.info;
+
+            // Store logs in a window property
+            (window as any).__capturedLogs = [];
+
+            console.log = function (...args: any[]) {
+              (window as any).__capturedLogs.push({ level: 'log', args: args.map(String) });
+              originalLog.apply(console, args);
+            };
+
+            console.error = function (...args: any[]) {
+              (window as any).__capturedLogs.push({ level: 'error', args: args.map(String) });
+              originalError.apply(console, args);
+            };
+
+            console.warn = function (...args: any[]) {
+              (window as any).__capturedLogs.push({ level: 'warn', args: args.map(String) });
+              originalWarn.apply(console, args);
+            };
+
+            console.info = function (...args: any[]) {
+              (window as any).__capturedLogs.push({ level: 'info', args: args.map(String) });
+              originalInfo.apply(console, args);
+            };
+          }
+        });
+      } catch (error) {
+        console.warn(`⚠ Failed to inject console capture script: ${error}`);
+        // Continue without early injection - the listener will still work
+      }
+    }
+  }
+
+  /**
+   * Setup console logging capture (after page is created)
+   *
+   * @param page - Playwright Page object
    */
   setupConsoleCapture(page: PageLike): void {
-    // Note: Console message capture is handled via browser listener
-    // This is a placeholder for setup if needed
-    console.log('✓ Console capture configured');
+    // Set up listener for console messages on the browser page
+    if (typeof (page as any).on === 'function') {
+      try {
+        // Listen for console messages (Playwright ConsoleMessage events)
+        (page as any).on('console', (msg: any) => {
+          try {
+            // Extract message text - Playwright ConsoleMessage has text() method
+            let messageText = '';
+            if (typeof msg?.text === 'function') {
+              messageText = msg.text();
+            } else if (typeof msg === 'string') {
+              messageText = msg;
+            } else if (msg?.message) {
+              messageText = msg.message;
+            } else {
+              messageText = String(msg);
+            }
+
+            if (!messageText) return; // Skip empty messages
+
+            // Get log level/type
+            let level: 'log' | 'warn' | 'error' | 'info' = 'log';
+            if (typeof msg?.type === 'function') {
+              const msgType = msg.type();
+              if (msgType === 'warning') level = 'warn';
+              else if (msgType === 'error') level = 'error';
+              else if (msgType === 'info') level = 'info';
+            } else if (msg?.type) {
+              const msgType = msg.type;
+              if (msgType === 'warning') level = 'warn';
+              else if (msgType === 'error') level = 'error';
+              else if (msgType === 'info') level = 'info';
+            }
+
+            // Extract arguments if available
+            let args: string[] | undefined;
+            if (msg?.args && Array.isArray(msg.args)) {
+              args = msg.args.map((arg: any) => {
+                try {
+                  if (typeof arg?.jsonValue === 'function') {
+                    return String(arg.jsonValue());
+                  }
+                  return typeof arg === 'object' ? JSON.stringify(arg) : String(arg);
+                } catch {
+                  return String(arg);
+                }
+              });
+            }
+
+            // Add to our logs
+            this.addConsoleLog(level, messageText, args);
+          } catch (handlerError) {
+            // Silently skip errors in individual console message handling
+          }
+        });
+
+        // Listen for page errors
+        (page as any).on('pageerror', (error: any) => {
+          try {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            this.addConsoleLog('error', `Page error: ${errorMsg}`);
+          } catch {
+            // Silently skip error handling failures
+          }
+        });
+
+        // Also inject a script to capture console calls on the page itself
+        // This helps catch console output that might not be exposed via Playwright events
+        // (especially useful for remote browsers like Browserbase)
+        (page as any).evaluateOnNewDocument(() => {
+          if (typeof window !== 'undefined') {
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+            const originalInfo = console.info;
+
+            // Store logs in a window property so we could retrieve them if needed
+            (window as any).__capturedLogs = [];
+
+            console.log = function (...args: any[]) {
+              (window as any).__capturedLogs.push({ level: 'log', args: args.map(String) });
+              originalLog.apply(console, args);
+            };
+
+            console.error = function (...args: any[]) {
+              (window as any).__capturedLogs.push({ level: 'error', args: args.map(String) });
+              originalError.apply(console, args);
+            };
+
+            console.warn = function (...args: any[]) {
+              (window as any).__capturedLogs.push({ level: 'warn', args: args.map(String) });
+              originalWarn.apply(console, args);
+            };
+
+            console.info = function (...args: any[]) {
+              (window as any).__capturedLogs.push({ level: 'info', args: args.map(String) });
+              originalInfo.apply(console, args);
+            };
+          }
+        }).catch(() => {
+          // Silently fail if evaluateOnNewDocument isn't available
+        });
+
+        console.log('✓ Console capture configured');
+      } catch (error) {
+        console.warn(`⚠ Failed to setup console capture: ${error}`);
+      }
+    } else {
+      console.warn('⚠ Page object does not support event listeners');
+    }
   }
 
   /**

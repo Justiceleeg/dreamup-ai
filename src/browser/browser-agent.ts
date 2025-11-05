@@ -95,6 +95,29 @@ export class BrowserAgent {
   }
 
   /**
+   * Setup console capture on page early (before navigation)
+   * This must be called before navigation so evaluateOnNewDocument takes effect
+   */
+  async setupEarlyConsoleCapture(setupCallback: (page: any) => Promise<void>): Promise<void> {
+    if (!this.stagehand) {
+      throw new Error('No Stagehand instance available');
+    }
+
+    try {
+      const pages = (this.stagehand as any).context?.pages?.();
+      if (!pages || pages.length === 0) {
+        throw new Error('No pages available in context');
+      }
+
+      const page = pages[0];
+      await setupCallback(page);
+    } catch (error) {
+      console.warn(`⚠ Failed to setup early console capture: ${error}`);
+      // Don't throw - continue without it
+    }
+  }
+
+  /**
    * Navigate to URL with configurable timeout
    *
    * @param url - URL to navigate to

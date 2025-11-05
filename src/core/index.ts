@@ -79,6 +79,12 @@ async function testGameInternal(config: QAConfig, startTime: number): Promise<Te
     // Initialize browser
     await agent.initializeBrowser();
 
+    // Setup early console capture (before navigation)
+    // Must happen before loadGame() so the script injection works
+    await agent.setupEarlyConsoleCapture(async (page) => {
+      await evidence.setupEarlyConsoleCapture(page);
+    });
+
     // Load game
     const page = await agent.loadGame(config.gameUrl);
 
