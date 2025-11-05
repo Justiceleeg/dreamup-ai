@@ -14,9 +14,10 @@ OUTPUT_DIR="./test-results"
 
 # Test cases: (URL, Name, Type)
 declare -a GAMES=(
-    "https://funhtml5games.com/2048/index.html|2048|DOM Puzzle"
-    "https://funhtml5games.com/pacman/index.html|Pac-Man|Canvas Arcade"
-    "https://funhtml5games.com/tetris/index.html|Tetris|Canvas Game"
+    "https://example-games-705a0.web.app/pong|Pong|Arcade Game"
+    "https://example-games-705a0.web.app/snake|Snake|Arcade Game"
+    "https://funhtml5games.com/2048/index.html|2048|Puzzle Game"
+    "https://funhtml5games.com/pacman/index.html|Pac-Man|Arcade Game"
 )
 
 # Color codes
@@ -41,7 +42,7 @@ run_test() {
     echo "---"
 
     # Run the test
-    npx tsx src/core/index.ts "$url" \
+    npx tsx qa-agent "$url" \
         --timeout $TIMEOUT \
         --screenshots $SCREENSHOTS \
         --output $OUTPUT_DIR \
