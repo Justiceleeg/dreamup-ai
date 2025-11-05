@@ -11,6 +11,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import type { Page } from '@browserbasehq/stagehand/types/page';
 import { randomUUID } from 'crypto';
+import { simpleHash, hashAsNumber } from '../shared/utils/hash.js';
 
 // Type for page objects (can be Stagehand Page or Playwright Page from context.pages())
 type PageLike = Page | any;
@@ -83,7 +84,7 @@ export class EvidenceCapture {
     try {
       const urlObj = new URL(url);
       const domain = urlObj.hostname.replace(/^www\./, '');
-      const hash = this.simpleHash(url).toString(16).substring(0, 8);
+      const hash = hashAsNumber(url).toString(16).substring(0, 8);
       const combined = `${domain}-${hash}`.toLowerCase();
       return combined.replace(/[^a-z0-9-]/g, '').substring(0, 50);
     } catch {
@@ -91,21 +92,6 @@ export class EvidenceCapture {
     }
   }
 
-  /**
-   * Simple hash function for URL
-   *
-   * @param str - String to hash
-   * @returns Hash number
-   */
-  private simpleHash(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash);
-  }
 
   /**
    * Get ISO timestamp

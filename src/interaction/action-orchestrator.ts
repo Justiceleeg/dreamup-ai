@@ -7,6 +7,7 @@
 
 import { Stagehand } from '@browserbasehq/stagehand';
 import type { Action, PageState, ActionResult } from '../shared/types.js';
+import { simpleHash } from '../shared/utils/hash.js';
 
 /**
  * Orchestrates autonomous interaction with game pages using Stagehand V3
@@ -374,7 +375,7 @@ export class ActionOrchestrator {
         url,
         title,
         timestamp: Date.now(),
-        hash: this.generateStateHash(url + title),
+        hash: simpleHash(url + title),
       };
 
       this.stateHistory.push(state);
@@ -383,21 +384,6 @@ export class ActionOrchestrator {
     }
   }
 
-  /**
-   * Generate a hash of page state for change detection
-   *
-   * @param content - Content to hash
-   * @returns Simple hash string
-   */
-  private generateStateHash(content: string): string {
-    let hash = 0;
-    for (let i = 0; i < content.length; i++) {
-      const char = content.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(16);
-  }
 
   /**
    * Detect if page state has changed since last observation

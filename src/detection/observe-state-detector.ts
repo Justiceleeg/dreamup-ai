@@ -7,6 +7,7 @@
  */
 
 import type { Stagehand } from '@browserbasehq/stagehand';
+import { simpleHash } from '../shared/utils/hash.js';
 
 /**
  * State change detection result
@@ -150,7 +151,7 @@ export class ObserveStateDetector {
       });
 
       // Calculate a simple hash of the state
-      const hash = this.simpleHash(JSON.stringify(state));
+      const hash = simpleHash(JSON.stringify(state));
 
       return {
         ...state,
@@ -199,19 +200,6 @@ export class ObserveStateDetector {
     return false;
   }
 
-  /**
-   * Simple hash function for comparing states
-   * Not cryptographically secure, just for quick comparison
-   */
-  private simpleHash(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash.toString(16);
-  }
 
   /**
    * Wait for a specific condition to be true on the page
