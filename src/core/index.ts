@@ -11,6 +11,7 @@ import { EvidenceCapture } from '../evidence/evidence-capture.js';
 import { ImprovedGameInteractor } from '../interaction/improved-game-interactor.js';
 import { AIEvaluator } from '../evaluation/ai-evaluator.js';
 import { executeWithTimeout, getTimeout, TimeoutError } from '../utils/timeout-utils.js';
+import { handleError, ErrorTemplates } from '../shared/error-handler.js';
 
 const VERSION = '2.0.0'; // Updated for Layer 2
 
@@ -31,11 +32,18 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
     getTimeout('OVERALL_TEST'),
     'overall game test'
   ).catch(async (error) => {
-    const errorMsg = error instanceof TimeoutError
-      ? `Test execution exceeded ${getTimeout('OVERALL_TEST')}ms timeout`
-      : error instanceof Error ? error.message : String(error);
+    let errorMsg = '';
+    if (error instanceof TimeoutError) {
+      errorMsg = handleError(
+        ErrorTemplates.pageLoadTimeout(config.gameUrl, getTimeout('OVERALL_TEST'))
+      );
+    } else if (error instanceof Error) {
+      errorMsg = handleError(error);
+    } else {
+      errorMsg = `❌ An unexpected error occurred: ${String(error)}`;
+    }
 
-    console.error(`❌ Test failed: ${errorMsg}`);
+    console.error(errorMsg);
 
     return {
       status: 'error',
@@ -275,15 +283,17 @@ async function testGameInternal(config: QAConfig, startTime: number): Promise<Te
     console.log(`📁 Results saved to: ${evidence.getTestDir()}`);
     return result;
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Test failed: ${errorMsg}`);
+    const errorMsg = handleError(error);
+    console.error(errorMsg);
 
     // Try to save whatever evidence we have
     try {
       await evidence.saveConsoleLogs();
       await evidence.saveManifest(config.gameUrl);
     } catch (saveError) {
-      console.warn(`Could not save evidence: ${saveError}`);
+      console.warn(
+        `⚠ Could not save evidence: ${saveError instanceof Error ? saveError.message : String(saveError)}`
+      );
     }
 
     return {

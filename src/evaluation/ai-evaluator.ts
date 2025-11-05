@@ -11,6 +11,7 @@ import { z } from 'zod';
 import type { LLMEvaluation, Issue } from '../shared/types.js';
 import * as fs from 'fs';
 import { executeWithTimeout, getTimeout, TimeoutError } from '../utils/timeout-utils.js';
+import { ErrorTemplates } from '../shared/error-handler.js';
 
 /**
  * Schema for LLM evaluation output
@@ -55,7 +56,7 @@ export class AIEvaluator {
     this.apiKey = apiKey || process.env.OPENAI_API_KEY || '';
 
     if (!this.apiKey) {
-      throw new Error('OPENAI_API_KEY not found in environment variables');
+      throw ErrorTemplates.missingApiKey('OpenAI');
     }
   }
 

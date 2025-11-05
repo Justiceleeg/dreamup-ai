@@ -7,6 +7,7 @@
 
 import { Stagehand } from '@browserbasehq/stagehand';
 import type { BrowserSession } from '../shared/types.js';
+import { ErrorTemplates } from '../shared/error-handler.js';
 
 /**
  * Browser Agent for controlling game interactions
@@ -32,7 +33,7 @@ export class BrowserAgent {
       const projectId = process.env.BROWSERBASE_PROJECT_ID;
 
       if (!apiKey) {
-        throw new Error('BROWSERBASE_API_KEY not found in environment variables');
+        throw ErrorTemplates.missingApiKey('BROWSERBASE');
       }
 
       // Initialize Stagehand V3 with Browserbase backend
@@ -48,8 +49,13 @@ export class BrowserAgent {
       console.log('✓ Browserbase connection initialized');
       return this.stagehand;
     } catch (error) {
-      throw new Error(
-        `Failed to initialize browser: ${error instanceof Error ? error.message : String(error)}`
+      // Re-throw if it's already a structured error
+      if (error instanceof Error && error.name === 'QAError') {
+        throw error;
+      }
+      // Wrap other errors with helpful context
+      throw ErrorTemplates.browserInitFailed(
+        error instanceof Error ? error.message : String(error)
       );
     }
   }

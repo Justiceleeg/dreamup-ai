@@ -9,6 +9,7 @@ export { testGame } from './core/index.js';
 
 // If this is the main module, run the CLI
 import { testGame } from './core/index.js';
+import { handleError } from './shared/error-handler.js';
 
 const args = process.argv.slice(2);
 
@@ -62,6 +63,6 @@ testGame(config)
     process.exit(result.status === 'pass' ? 0 : 1);
   })
   .catch((error) => {
-    console.error('❌ Test failed:', error);
+    console.error(handleError(error));
     process.exit(1);
   });
