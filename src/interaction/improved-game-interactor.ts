@@ -100,7 +100,6 @@ export class ImprovedGameInteractor {
         this.actInteractor.setGameContext({
           gameName: gameAnalysis.gameName,
           gameType: gameAnalysis.gameType as 'dom' | 'canvas' | 'hybrid',
-          controls: gameAnalysis.controls,
         });
       }
 
@@ -163,7 +162,7 @@ export class ImprovedGameInteractor {
       this.currentActionIndex = 0;
     }
 
-    const action = this.currentActionSet[this.currentActionIndex];
+    const action = this.currentActionSet[this.currentActionIndex]!;
     this.currentActionIndex++;
 
     console.log(`🎯 Executing action ${this.currentActionIndex}/${this.currentActionSet.length}: ${action.type}`);
@@ -243,7 +242,7 @@ export class ImprovedGameInteractor {
           try {
             const screenshotPaths = evidence.getScreenshotPaths();
             if (screenshotPaths.length > 0) {
-              const lastScreenshot = screenshotPaths[screenshotPaths.length - 1];
+              const lastScreenshot = screenshotPaths[screenshotPaths.length - 1]!;
               console.log(`🔄 Quick re-analysis using modal instructions...`);
               const updatedAnalysis = await this.gameAnalyzer.analyzeGameFromInstructions(modalContent, lastScreenshot);
 

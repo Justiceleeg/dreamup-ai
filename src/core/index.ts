@@ -158,7 +158,7 @@ async function testGameInternal(config: QAConfig, startTime: number): Promise<Te
         const lastScreenshot = screenshotPaths[screenshotPaths.length - 1];
 
         // Execute action with state change detection
-        const stateChanged = await interactor.executeActionCycleWithDetection(evidence, lastScreenshot);
+        const stateChanged = await interactor.executeActionCycleWithDetection(evidence, lastScreenshot!);
         totalActionsAttempted++;
 
         if (stateChanged) {

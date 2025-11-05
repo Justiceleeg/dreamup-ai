@@ -104,7 +104,7 @@ export interface LLMEvaluation {
   stable: boolean;
   playability_score: number;
   confidence: number;
-  issues: string[];
+  issues: Array<{ type: string; severity: string; description: string }>;
   recommendations: string[];
   reasoning: string;
 }

@@ -18,7 +18,7 @@ if (args.length === 0) {
   process.exit(1);
 }
 
-const gameUrl = args[0];
+const gameUrl = args[0]!;
 
 // Parse options
 const options: { [key: string]: any } = {
@@ -29,16 +29,19 @@ const options: { [key: string]: any } = {
 };
 
 for (let i = 1; i < args.length; i++) {
-  if (args[i] === '--timeout' && i + 1 < args.length) {
-    options.timeout = parseInt(args[i + 1]);
+  const arg = args[i]!;
+  const nextArg = args[i + 1];
+
+  if (arg === '--timeout' && nextArg) {
+    options.timeout = parseInt(nextArg);
     i++;
-  } else if (args[i] === '--screenshots' && i + 1 < args.length) {
-    options.screenshots = parseInt(args[i + 1]);
+  } else if (arg === '--screenshots' && nextArg) {
+    options.screenshots = parseInt(nextArg);
     i++;
-  } else if (args[i] === '--output' && i + 1 < args.length) {
-    options.output = args[i + 1];
+  } else if (arg === '--output' && nextArg) {
+    options.output = nextArg;
     i++;
-  } else if (args[i] === '--headed') {
+  } else if (arg === '--headed') {
     options.headed = true;
   }
 }
@@ -49,7 +52,7 @@ const config = {
   screenshotCount: options.screenshots,
   outputDir: options.output,
   headed: options.headed,
-  logLevel: 'info',
+  logLevel: 'info' as const,
 };
 
 testGame(config)

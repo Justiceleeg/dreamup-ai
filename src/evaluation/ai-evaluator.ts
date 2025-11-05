@@ -353,7 +353,14 @@ Be thorough but concise in your analysis.`;
     }
 
     // Add any issues from LLM evaluation
-    issues.push(...evaluation.issues);
+    for (const llmIssue of evaluation.issues) {
+      issues.push({
+        type: (llmIssue.type as any) || 'other',
+        severity: (llmIssue.severity as any) || 'major',
+        description: llmIssue.description,
+        detected_at_ms: 0,
+      });
+    }
 
     return issues;
   }

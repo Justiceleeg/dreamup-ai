@@ -9,12 +9,11 @@
 
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
-import type { Page } from '@browserbasehq/stagehand/types/page';
 import { randomUUID } from 'crypto';
 import { simpleHash, hashAsNumber } from '../shared/utils/hash.js';
 
 // Type for page objects (can be Stagehand Page or Playwright Page from context.pages())
-type PageLike = Page | any;
+type PageLike = any;
 
 /**
  * Screenshot metadata
@@ -216,7 +215,7 @@ export class EvidenceCapture {
    * @returns Array of file paths
    */
   async captureMultipleScreenshots(
-    page: Page,
+    page: PageLike,
     descriptions: string[] = []
   ): Promise<string[]> {
     const paths: string[] = [];
@@ -239,7 +238,7 @@ export class EvidenceCapture {
    *
    * @param page - Stagehand page object
    */
-  setupConsoleCapture(page: Page): void {
+  setupConsoleCapture(page: PageLike): void {
     // Note: Console message capture is handled via browser listener
     // This is a placeholder for setup if needed
     console.log('✓ Console capture configured');

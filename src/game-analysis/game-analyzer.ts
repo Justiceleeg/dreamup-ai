@@ -16,7 +16,6 @@ import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import * as fs from 'fs';
-import type { Page } from '@browserbasehq/stagehand/types/page';
 
 /**
  * Game analysis result schema
@@ -193,7 +192,7 @@ IMPORTANT:
         result.gameType = canvases.length > 0 ? 'canvas' : 'dom';
 
         // Common keyboard patterns in instructions
-        const instructionText = result.visibleInstructions.toLowerCase();
+        const instructionText = (result.visibleInstructions || '').toLowerCase();
         const gameNameLower = result.gameName?.toLowerCase() || '';
         const keyPatterns: Record<string, string[]> = {
           'arrow': ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'],
@@ -252,7 +251,7 @@ IMPORTANT:
             // Don't detect "New Game" as it might be in a menu
             result.startAction = 'button' as any;
             const startKeywords = ['play', 'play game', 'play now', 'begin', 'start game'];
-            for (const btn of buttons) {
+            for (const btn of Array.from(buttons)) {
               const text = (btn.textContent || '').trim().toLowerCase();
               for (const keyword of startKeywords) {
                 if (text === keyword || text.startsWith(keyword)) {
@@ -347,8 +346,8 @@ IMPORTANT:
       else if (key.includes('-') && key.length <= 3) {
         const parts = key.split('-');
         if (parts.length === 2) {
-          const start = parts[0].charCodeAt(0);
-          const end = parts[1].charCodeAt(0);
+          const start = parts[0]!.charCodeAt(0);
+          const end = parts[1]!.charCodeAt(0);
           for (let i = start; i <= end; i++) {
             expanded.push(String.fromCharCode(i).toLowerCase());
           }

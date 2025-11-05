@@ -171,8 +171,8 @@ export class ActionOrchestrator {
             // Check if this is a canvas coordinate-based click (target format: "canvas:x,y")
             if (action.target?.startsWith('canvas:')) {
               const coords = action.target.substring('canvas:'.length).split(',');
-              const x = parseInt(coords[0], 10);
-              const y = parseInt(coords[1], 10);
+              const x = parseInt(coords[0]!, 10);
+              const y = parseInt(coords[1]!, 10);
 
               if (!isNaN(x) && !isNaN(y)) {
                 console.log(`🎮 Clicking canvas at coordinates (${x}, ${y})`);
@@ -302,12 +302,12 @@ export class ActionOrchestrator {
         }
 
         // Use retry observations
-        const actionToTake = retryObservations[0];
+        const actionToTake = retryObservations[0]!;
         await this.executeAction(actionToTake);
         cycleActions.push(actionToTake);
       } else {
         // Step 2: Act on first observable element
-        const actionToTake = observedActions[0];
+        const actionToTake = observedActions[0]!;
         await this.executeAction(actionToTake);
         cycleActions.push(actionToTake);
       }
@@ -396,6 +396,7 @@ export class ActionOrchestrator {
     const current = this.stateHistory[this.stateHistory.length - 1];
     const previous = this.stateHistory[this.stateHistory.length - 2];
 
+    if (!current || !previous) return false;
     return current.hash !== previous.hash;
   }
 

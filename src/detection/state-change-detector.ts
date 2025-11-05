@@ -125,7 +125,9 @@ export class StateChangeDetector {
     const results: StateChangeResult[] = [];
 
     for (let i = 1; i < screenshotPaths.length; i++) {
-      const result = this.compareScreenshots(screenshotPaths[i - 1], screenshotPaths[i]);
+      const prev = screenshotPaths[i - 1]!;
+      const curr = screenshotPaths[i]!;
+      const result = this.compareScreenshots(prev, curr);
       results.push(result);
     }
 

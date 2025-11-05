@@ -166,6 +166,7 @@ export class StagehandActInteractor {
     }
 
     const bestPractice = successful[0];
+    if (!bestPractice) return instruction;
     return `${instruction}. Based on previous interactions, we know ${bestPractice.instruction} works.`;
   }
 
