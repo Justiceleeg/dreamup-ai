@@ -41,8 +41,8 @@ run_test() {
     echo "URL: $url"
     echo "---"
 
-    # Run the test
-    npx tsx qa-agent "$url" \
+    # Run the test (use src/index.ts directly with npx tsx)
+    npx tsx src/index.ts "$url" \
         --timeout $TIMEOUT \
         --screenshots $SCREENSHOTS \
         --output $OUTPUT_DIR \
