@@ -156,6 +156,215 @@ test-results/{gameId}/{timestamp}/
 └── result.json              (Full JSON report)
 ```
 
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### "Missing API key for Browserbase"
+```bash
+# Solution: Set your Browserbase API key
+export BROWSERBASE_API_KEY="your-api-key-here"
+
+# Or add to .env file
+echo "BROWSERBASE_API_KEY=your-api-key-here" >> .env
+```
+Get a free Browserbase account at: https://www.browserbase.com
+
+#### "Missing API key for OpenAI"
+```bash
+# Solution: Set your OpenAI API key
+export OPENAI_API_KEY="sk-..."
+
+# Or add to .env file
+echo "OPENAI_API_KEY=sk-..." >> .env
+```
+Get an API key at: https://platform.openai.com/account/api-keys
+
+#### "Test execution exceeded 120000ms timeout"
+- The game took too long to load or respond
+- Try increasing the timeout: `--timeout 300000` (5 minutes)
+- Check if the game URL is working in your browser
+- Verify your internet connection
+
+#### "Failed to initialize browser"
+- Verify Browserbase is reachable (check service status)
+- Check your API credentials are correct
+- Try again in a moment (may be temporary issue)
+
+#### "Page error / Game crashed"
+- Check browser console for JavaScript errors
+- The game may have compatibility issues with Playwright/Browserbase
+- Try testing a different game to isolate the issue
+
+### Debug Mode
+
+Run with detailed logging:
+```bash
+# Show all Stagehand logs
+DEBUG=* pnpm dlx tsx ./src/index.ts https://example.com/game
+
+# Increase screenshot count for more visibility
+pnpm dlx tsx ./src/index.ts https://example.com/game --screenshots 10
+```
+
+## 📊 Output Format
+
+### JSON Report Structure
+
+Each test generates a JSON report with:
+
+```json
+{
+  "status": "pass|fail|error",
+  "gameUrl": "https://...",
+  "playability_score": 0-100,
+  "confidence": 0-100,
+  "execution_time_ms": 12345,
+  "issues": [
+    {
+      "type": "crash|unresponsive|load_failure|rendering|other",
+      "severity": "critical|major|minor",
+      "description": "..."
+    }
+  ],
+  "screenshots": ["path/to/screenshot.png", ...],
+  "console_logs": "path/to/console.log",
+  "metadata": {
+    "actions_performed": 5,
+    "screens_navigated": 2,
+    "screenshots_captured": 5,
+    "browser_errors": 0,
+    "agent_version": "2.0.0",
+    "evaluation_reasoning": "...",
+    "objective_metrics": {
+      "control_response_rate": 100,
+      "successful_actions": 5,
+      "total_actions_attempted": 5,
+      "intermediate_screenshots": 3
+    }
+  }
+}
+```
+
+### Playability Score Calculation
+
+- **0-30/100**: Game not playable (crashes, doesn't load, unresponsive)
+- **30-60/100**: Game playable with issues (slow, occasional crashes, poor controls)
+- **60-80/100**: Game mostly playable (minor issues, good responsiveness)
+- **80-100/100**: Game fully playable (stable, responsive, no major issues)
+
+## 🏗️ Architecture
+
+### System Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         CLI Entry Point                      │
+│                        (src/index.ts)                        │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │   Test Game     │
+                    │ (core/index.ts) │
+                    └────────┬────────┘
+                             │
+          ┌──────────────────┼──────────────────┐
+          │                  │                  │
+    ┌─────▼────┐      ┌──────▼─────┐      ┌────▼──────┐
+    │ Browser  │      │ Evidence   │      │Game       │
+    │ Agent    │      │ Capture    │      │Interactor │
+    │          │      │            │      │           │
+    │ Manages  │      │ Captures:  │      │ Performs: │
+    │ - Init   │      │ - Screenshots    │ - Observ. │
+    │ - Nav    │      │ - Console logs   │ - Actions │
+    │ - Close  │      │ - Manifest       │ - Detect  │
+    └─────┬────┘      └──────┬─────┘      └────┬──────┘
+          │                  │                  │
+          └──────────────────┼──────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  AI Evaluator   │
+                    │ (LLM Analysis)  │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │ Report Generator│
+                    │  (JSON Output)  │
+                    └─────────────────┘
+```
+
+### Key Modules
+
+| Module | Purpose | Location |
+|--------|---------|----------|
+| **BrowserAgent** | Browser lifecycle management | `src/browser/browser-agent.ts` |
+| **EvidenceCapture** | Evidence artifact collection | `src/evidence/evidence-capture.ts` |
+| **ImprovedGameInteractor** | Game interaction & state detection | `src/interaction/improved-game-interactor.ts` |
+| **AIEvaluator** | LLM-based playability assessment | `src/evaluation/ai-evaluator.ts` |
+| **ErrorHandler** | Consistent error formatting | `src/shared/error-handler.ts` |
+| **Types** | TypeScript interfaces & schemas | `src/shared/types.ts` |
+
+### Data Flow
+
+1. **Load Phase**
+   - Browser initializes with Browserbase
+   - Game URL loaded in headless browser
+   - Initial screenshot captured
+   - Console capture hooks set up
+
+2. **Interaction Phase**
+   - Stagehand analyzes page for interactive elements
+   - Actions (clicks, keys) executed with state monitoring
+   - Screenshots captured at key moments
+   - State changes detected via screenshot comparison
+
+3. **Evaluation Phase**
+   - Evidence (screenshots, logs, metrics) collected
+   - GPT-4o analyzes playability
+   - Playability score calculated (0-100)
+   - Issues and recommendations generated
+
+4. **Reporting Phase**
+   - Results formatted as JSON
+   - Artifacts organized with manifest
+   - Report saved to disk
+
+## 📋 Known Limitations
+
+### Browser & Environment
+- **Browserbase Remote Browsers**: Some JavaScript console events may not be exposed
+- **Heavy Games**: Games with intensive graphics may timeout or crash
+- **Native Code**: Games using WebAssembly extensively may have limited compatibility
+- **Authentication Required**: Games requiring login will likely fail
+
+### Game Types
+- **Games with CAPTCHAs**: Cannot be tested automatically
+- **Real-time Multiplayer**: May fail due to network/server issues
+- **Cloud-based Games**: Streaming games (e.g., GFXBench) are not testable
+
+### Detection & Analysis
+- **Console Logs**: May be empty on production games or in Browserbase remote environments
+- **State Detection**: Based on visual changes; invisible logic changes won't be detected
+- **Control Detection**: Detects visible UI elements; hidden or dynamically created controls may be missed
+- **Timing**: 30-second test window may be insufficient for complex game tutorials
+
+### LLM Limitations
+- **Inconsistent Analysis**: LLM judgments may vary based on prompt formatting
+- **Context Limits**: Large numbers of images may exceed token limits
+- **Cost**: Each test incurs LLM API costs
+
+## 🎬 CLI Options
+
+```bash
+npx tsx ./src/index.ts <gameUrl> [options]
+
+Options:
+  --timeout <ms>          Maximum test duration in milliseconds (default: 300000)
+  --screenshots <count>   Number of screenshots to capture (default: 5)
+  --output <dir>          Output directory for results (default: ./test-results)
+  --headed                Run browser in headed mode for debugging
+```
+
 ## 📚 More Information
 
 For detailed documentation, see:
