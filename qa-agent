@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+
+/**
+ * DreamUp QA Pipeline - CLI Entry Point
+ *
+ * Usage:
+ *   qa-agent <game-url> [options]
+ *   qa-agent https://example.com/game --timeout 300000 --screenshots 5
+ *
+ * Options:
+ *   --timeout <ms>        Maximum test duration in milliseconds (default: 300000)
+ *   --screenshots <count> Number of screenshots to capture (default: 5)
+ *   --output <dir>        Output directory for results (default: ./test-results)
+ *   --headed              Run browser in headed mode for debugging
+ */
+
+import { testGame } from './src/core/index.js';
+import { handleError } from './src/shared/error-handler.js';
+
+const args = process.argv.slice(2);
+
+if (args.length === 0) {
+  console.error('Usage: qa-agent <gameUrl> [options]');
+  console.error('Example: qa-agent https://example.com/game');
+  console.error('');
+  console.error('Options:');
+  console.error('  --timeout <ms>        Maximum test duration (default: 300000)');
+  console.error('  --screenshots <count> Number of screenshots (default: 5)');
+  console.error('  --output <dir>        Output directory (default: ./test-results)');
+  console.error('  --headed              Run browser in headed mode');
+  process.exit(1);
+}
+
+const gameUrl = args[0]!;
+
+// Parse options
+const options: { [key: string]: any } = {
+  timeout: 300000,
+  screenshots: 5,
+  output: './test-results',
+  headed: false,
+};
+
+for (let i = 1; i < args.length; i++) {
+  const arg = args[i]!;
+  const nextArg = args[i + 1];
+
+  if (arg === '--timeout' && nextArg) {
+    options.timeout = parseInt(nextArg);
+    i++;
+  } else if (arg === '--screenshots' && nextArg) {
+    options.screenshots = parseInt(nextArg);
+    i++;
+  } else if (arg === '--output' && nextArg) {
+    options.output = nextArg;
+    i++;
+  } else if (arg === '--headed') {
+    options.headed = true;
+  }
+}
+
+const config = {
+  gameUrl,
+  timeout: options.timeout,
+  screenshotCount: options.screenshots,
+  outputDir: options.output,
+  headed: options.headed,
+  logLevel: 'info' as const,
+};
+
+testGame(config)
+  .then((result) => {
+    console.log('✅ Test completed');
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(result.status === 'pass' ? 0 : 1);
+  })
+  .catch((error) => {
+    console.error(handleError(error));
+    process.exit(1);
+  });

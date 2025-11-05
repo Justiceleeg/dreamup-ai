@@ -45,8 +45,14 @@ pnpm install
 ### Running Your First Test
 
 ```bash
-# Test a game
-pnpm dlx tsx ./src/index.ts https://example.com/game
+# Option 1: Using the qa-agent script (recommended)
+npx tsx qa-agent https://example.com/game
+
+# Option 2: Using src/index.ts directly
+npx tsx src/index.ts https://example.com/game
+
+# Option 3: With pnpm
+pnpm dlx tsx qa-agent https://example.com/game
 ```
 
 ## 📖 Documentation
@@ -100,14 +106,15 @@ pnpm dlx tsx ./src/index.ts https://example.com/game
 ## 💻 Usage
 
 ```bash
-# Test a game
-pnpm dlx tsx ./src/index.ts https://example.com/game
+# Basic usage
+npx tsx qa-agent https://example.com/game
 
 # With options
-pnpm dlx tsx ./src/index.ts https://example.com/game \
+npx tsx qa-agent https://example.com/game \
   --timeout 300000 \
   --screenshots 5 \
-  --output ./test-results
+  --output ./test-results \
+  --headed
 ```
 
 ## ⚙️ Edge Cases & Robustness
