@@ -336,6 +336,67 @@ Each test generates a JSON report with:
    - Artifacts organized with manifest
    - Report saved to disk
 
+### How the Testing Loop Works
+
+The DreamUp QA Pipeline uses a **cycle-based interaction model** to autonomously test games:
+
+1. **Observe → Act → Observe → Analyze** Cycle
+   - **Observe:** Stagehand analyzes the page DOM to detect interactive elements (buttons, clickable areas)
+   - **Act:** Executes detected actions (clicks, keyboard inputs) to simulate player interaction
+   - **Observe:** Takes screenshots and monitors for state changes
+   - **Analyze:** Detects if the game state changed (different pixels, new UI elements, etc.)
+   - **Repeat:** Continues until timeout or game completion is detected
+
+2. **State Detection Strategy**
+   - Captures screenshots after each action to establish a baseline
+   - Compares consecutive screenshots to detect visual changes
+   - Uses pixel-level comparison to identify game progression (tiles merging, positions changing, UI updates)
+   - Monitors console logs for crash indicators and error messages
+
+3. **Safety Mechanisms**
+   - **Global Timeout:** 5-minute maximum per test (configurable)
+   - **Action Limit:** Maximum 50 actions to prevent infinite loops
+   - **State Loop Detection:** Stops if the same screenshot appears 3 times consecutively
+   - **Error Monitoring:** Tracks browser console for critical errors
+
+### AI-Powered Playability Analysis
+
+The system uses **Vercel AI SDK** with vision-capable LLMs (GPT-4o, Claude 3.5 Sonnet, Gemini) to intelligently analyze game playability:
+
+**Evidence Submission:**
+- Sends 3-5 timestamped screenshots showing game progression
+- Includes browser console logs (errors, warnings) for context
+- Provides objective metrics (action response rate, state changes detected)
+
+**Evaluation Criteria (via LLM):**
+- **Successful Load:** Is the game canvas visible and properly rendered?
+- **Responsive Controls:** Do user inputs (clicks, keys) produce visible state changes?
+- **Stability:** Are there crashes, freezes, or critical console errors?
+
+**Playability Scoring:**
+- LLM analyzes visual evidence and log data to generate a 0-100 score
+- Confidence score (0-100) indicates certainty in the assessment
+- Fallback heuristics apply if LLM fails (uses console error count + screenshot analysis)
+
+**Example Analysis Output:**
+```
+Screenshots analyzed: 5 images showing game progression
+Console logs: 0 errors detected
+Control response rate: 100% (5/5 actions caused visible changes)
+
+LLM Assessment:
+- successful_load: true ✓
+- responsive_controls: true ✓
+- stable: true ✓
+- playability_score: 92/100
+- confidence: 95/100
+
+Issues found: None critical
+Recommendations: Minor UI polish suggested
+```
+
+This combination of **visual evidence** (screenshots), **behavioral metrics** (action response rates), and **intelligent analysis** (LLM evaluation) ensures accurate playability assessments that would be difficult with purely automated or manual approaches.
+
 ## 📋 Known Limitations
 
 ### Browser & Environment
