@@ -8,6 +8,7 @@
 
 import type { Stagehand } from '@browserbasehq/stagehand';
 import type { Action } from '../shared/types.js';
+import { executeWithTimeout, getTimeout, TimeoutError } from '../utils/timeout-utils.js';
 
 export interface ActResult {
   success: boolean;
@@ -31,6 +32,20 @@ export interface LearnedInteraction {
   context: string; // e.g., "Wordle input field", "2048 board"
 }
 
+export interface ObservedAction {
+  action: string;
+  xpath?: string;
+  description?: string;
+}
+
+export interface PageState {
+  observedAt: number;
+  availableActions: ObservedAction[];
+  actionCount: number;
+  hasInputFields: boolean;
+  hasButtons: boolean;
+}
+
 /**
  * Interactor using Stagehand's act() method
  * Delegates complex action understanding to Stagehand's AI capabilities
@@ -42,6 +57,8 @@ export class StagehandActInteractor {
   private lastError: string | null = null;
   private gameContext: GameContextOptions | null = null;
   private learnedInteractions: Map<string, LearnedInteraction> = new Map();
+  private pageState: PageState | null = null;
+  private actionAttempts: Map<string, number> = new Map(); // Track how many times we've tried each action
 
   constructor(stagehand?: Stagehand) {
     this.stagehand = stagehand || null;
@@ -155,6 +172,7 @@ export class StagehandActInteractor {
   /**
    * Execute an action using Stagehand's act() method
    * Following V3 best practices: observe to discover actions, then act on them
+   * Uses observed state to guide action execution and validate that required elements exist
    * Also learns from successes/failures to improve future actions
    *
    * @param instruction - Natural language instruction (e.g., "Click the submit button", "Make a move in the game")
@@ -180,21 +198,78 @@ export class StagehandActInteractor {
       // Stagehand V3 best practice: observe() first to discover available actions
       // Use specific, contextual instructions (not vague ones) as per documentation
       console.log(`  👁️  Observing page for elements to interact with...`);
-      let observedActions = [];
+      let observedActions: ObservedAction[] = [];
+      let hasRelevantElements = false;
+
       try {
         // Convert vague instruction to specific observation request
         // e.g., "Press Enter" becomes "find the submit or enter button"
         const observeInstruction = this.getSpecificObserveInstruction(enhancedInstruction);
-        observedActions = await this.stagehand.observe(observeInstruction);
-        console.log(`  Found ${observedActions?.length || 0} interactive elements on page`);
+
+        // Wrap observe() with timeout to prevent hanging
+        const rawObserved = await executeWithTimeout(
+          () => this.stagehand!.observe(observeInstruction),
+          getTimeout('STAGEHAND_OBSERVE'),
+          `observe: ${observeInstruction}`
+        );
+
+        // Parse observed actions into structured format
+        if (rawObserved && Array.isArray(rawObserved) && rawObserved.length > 0) {
+          observedActions = rawObserved.map((action: any) => ({
+            action: typeof action === 'string' ? action : action.action || String(action),
+            xpath: action.xpath,
+            description: action.description,
+          }));
+          hasRelevantElements = true;
+          console.log(`  ✓ Found ${observedActions.length} interactive elements matching instruction`);
+        } else {
+          console.log(`  ℹ No elements found matching "${observeInstruction}"`);
+        }
+
+        // Update page state with observed actions
+        this.updatePageState(observedActions);
       } catch (observeErr) {
-        console.warn(`  ⚠  Observation returned: ${observeErr instanceof Error ? observeErr.message : String(observeErr)}`);
+        if (observeErr instanceof TimeoutError) {
+          console.warn(`  ⊘ Observation timeout: ${observeErr.message}`);
+        } else {
+          console.warn(`  ⚠  Observation warning: ${observeErr instanceof Error ? observeErr.message : String(observeErr)}`);
+        }
         // Continue with act() even if observe() fails - observe is informational
       }
 
-      // Call stagehand.act() with the instruction
+      // VALIDATION: If observe found no relevant elements, decide whether to skip or proceed
+      const attemptCount = (this.actionAttempts.get(instruction) || 0) + 1;
+      this.actionAttempts.set(instruction, attemptCount);
+
+      if (!hasRelevantElements && attemptCount > 2) {
+        console.log(`  ⊘ Skipping: No relevant elements found after ${attemptCount} attempts`);
+        this.recordFailedInteraction(actionType, instruction);
+        return {
+          success: false,
+          message: `Skipped: No interactive elements found for this action. Try again with different action.`,
+          duration: Date.now() - startTime,
+        };
+      }
+
+      // ENHANCE INSTRUCTION with observed context
+      // Tell Stagehand what elements are available so it makes better decisions
+      let contextAugmentedInstruction = enhancedInstruction;
+      if (observedActions.length > 0) {
+        const actionDescriptions = observedActions
+          .map((a) => a.description || a.action)
+          .slice(0, 3)
+          .join(', ');
+        contextAugmentedInstruction += ` (Available options: ${actionDescriptions})`;
+      }
+
+      // Call stagehand.act() with the context-enhanced instruction
       // This method uses vision to understand the page and execute the action
-      const result = await this.stagehand.act(enhancedInstruction);
+      // Wrap with timeout to prevent hanging operations
+      const result = await executeWithTimeout(
+        () => this.stagehand!.act(contextAugmentedInstruction),
+        getTimeout('STAGEHAND_ACT'),
+        `act: ${contextAugmentedInstruction}`
+      );
 
       const duration = Date.now() - startTime;
 
@@ -204,6 +279,7 @@ export class StagehandActInteractor {
 
         // Record this successful interaction for future reference
         this.recordSuccessfulInteraction(actionType, instruction);
+        this.actionAttempts.set(instruction, 0); // Reset attempts on success
 
         this.actionHistory.push({
           instruction,
@@ -250,7 +326,11 @@ export class StagehandActInteractor {
       const duration = Date.now() - startTime;
       const errorMsg = error instanceof Error ? error.message : String(error);
 
-      console.warn(`⚠ Action execution error: ${errorMsg}`);
+      if (error instanceof TimeoutError) {
+        console.warn(`⊘ Action execution timeout: ${errorMsg}`);
+      } else {
+        console.warn(`⚠ Action execution error: ${errorMsg}`);
+      }
 
       // Record this failed interaction
       this.recordFailedInteraction(actionType, instruction);
@@ -415,5 +495,81 @@ export class StagehandActInteractor {
     }
     const successful = this.actionHistory.filter((a) => a.result.success).length;
     return (successful / this.actionHistory.length) * 100;
+  }
+
+  /**
+   * Update page state based on observed actions
+   * Maintains knowledge of what interactive elements are available
+   *
+   * @param observedActions - Array of actions observed on the page
+   */
+  private updatePageState(observedActions: ObservedAction[]): void {
+    const hasInputFields = observedActions.some((a) =>
+      a.description?.toLowerCase().includes('input') ||
+      a.description?.toLowerCase().includes('field') ||
+      a.action?.toLowerCase().includes('input')
+    );
+
+    const hasButtons = observedActions.some((a) =>
+      a.description?.toLowerCase().includes('button') ||
+      a.description?.toLowerCase().includes('click') ||
+      a.action?.toLowerCase().includes('button')
+    );
+
+    this.pageState = {
+      observedAt: Date.now(),
+      availableActions: observedActions,
+      actionCount: observedActions.length,
+      hasInputFields,
+      hasButtons,
+    };
+
+    console.log(
+      `  📋 Page state: ${observedActions.length} actions, inputs=${hasInputFields}, buttons=${hasButtons}`
+    );
+  }
+
+  /**
+   * Get current page state
+   * Returns the last observed state of interactive elements on the page
+   */
+  getPageState(): PageState | null {
+    return this.pageState;
+  }
+
+  /**
+   * Check if specific type of element is available on page
+   * Useful for deciding what actions to try next
+   *
+   * @param elementType - 'button' | 'input' | 'any'
+   * @returns true if element type is available
+   */
+  hasElementAvailable(elementType: 'button' | 'input' | 'any' = 'any'): boolean {
+    if (!this.pageState) return false;
+
+    switch (elementType) {
+      case 'button':
+        return this.pageState.hasButtons;
+      case 'input':
+        return this.pageState.hasInputFields;
+      case 'any':
+        return this.pageState.actionCount > 0;
+    }
+  }
+
+  /**
+   * Get a description of currently available actions for debugging/logging
+   */
+  getAvailableActionsSummary(): string {
+    if (!this.pageState || this.pageState.actionCount === 0) {
+      return 'No interactive elements detected';
+    }
+
+    const summary = this.pageState.availableActions
+      .slice(0, 5) // Show top 5
+      .map((a) => a.description || a.action)
+      .join(', ');
+
+    return `${this.pageState.actionCount} elements: ${summary}${this.pageState.actionCount > 5 ? '...' : ''}`;
   }
 }

@@ -10,6 +10,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import type { LLMEvaluation, Issue } from '../shared/types.js';
 import * as fs from 'fs';
+import { executeWithTimeout, getTimeout, TimeoutError } from '../utils/timeout-utils.js';
 
 /**
  * Schema for LLM evaluation output
@@ -104,11 +105,16 @@ export class AIEvaluator {
         ? `${prompt}\n\nNote: ${screenshots.length} screenshot(s) were captured during testing.`
         : prompt;
 
-      const response = await generateObject({
-        model: openai(this.modelName),
-        schema: evaluationSchema,
-        prompt: evaluationPrompt,
-      });
+      // Wrap AI evaluation with timeout to prevent hanging
+      const response = await executeWithTimeout(
+        () => generateObject({
+          model: openai(this.modelName),
+          schema: evaluationSchema,
+          prompt: evaluationPrompt,
+        }),
+        getTimeout('AI_EVALUATION'),
+        'AI game playability evaluation'
+      );
 
       // Validate response object has required fields
       if (!response.object || Object.keys(response.object).length === 0) {
@@ -130,9 +136,13 @@ export class AIEvaluator {
 
       return evaluation;
     } catch (error) {
-      console.error(
-        `❌ AI evaluation failed: ${error instanceof Error ? error.message : String(error)}`
-      );
+      if (error instanceof TimeoutError) {
+        console.error(`❌ AI evaluation timeout: ${error.message}`);
+      } else {
+        console.error(
+          `❌ AI evaluation failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
 
       // Return fallback heuristic evaluation
       return this.getFallbackEvaluation();

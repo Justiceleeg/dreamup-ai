@@ -10,6 +10,7 @@ import { BrowserAgent } from '../browser/browser-agent.js';
 import { EvidenceCapture } from '../evidence/evidence-capture.js';
 import { ImprovedGameInteractor } from '../interaction/improved-game-interactor.js';
 import { AIEvaluator } from '../evaluation/ai-evaluator.js';
+import { executeWithTimeout, getTimeout, TimeoutError } from '../utils/timeout-utils.js';
 
 const VERSION = '2.0.0'; // Updated for Layer 2
 
@@ -23,6 +24,51 @@ export async function testGame(config: QAConfig): Promise<TestResult> {
   console.log(`🎮 Starting QA test for: ${config.gameUrl}`);
 
   const startTime = Date.now();
+
+  // Wrap entire test with overall timeout to prevent hanging
+  return executeWithTimeout(
+    () => testGameInternal(config, startTime),
+    getTimeout('OVERALL_TEST'),
+    'overall game test'
+  ).catch(async (error) => {
+    const errorMsg = error instanceof TimeoutError
+      ? `Test execution exceeded ${getTimeout('OVERALL_TEST')}ms timeout`
+      : error instanceof Error ? error.message : String(error);
+
+    console.error(`❌ Test failed: ${errorMsg}`);
+
+    return {
+      status: 'error',
+      gameUrl: config.gameUrl,
+      playability_score: 0,
+      confidence: 0,
+      timestamp: new Date().toISOString(),
+      execution_time_ms: Date.now() - startTime,
+      issues: [
+        {
+          type: 'load_failure',
+          severity: 'critical',
+          description: errorMsg,
+          detected_at_ms: 0,
+        },
+      ],
+      screenshots: [],
+      console_logs: undefined,
+      metadata: {
+        actions_performed: 0,
+        screens_navigated: 0,
+        browser_errors: 1,
+        agent_version: VERSION,
+        evaluation_reasoning: errorMsg,
+      },
+    };
+  });
+}
+
+/**
+ * Internal implementation of testGame - wrapped with timeout by testGame()
+ */
+async function testGameInternal(config: QAConfig, startTime: number): Promise<TestResult> {
   const agent = new BrowserAgent(config.timeout);
   const evidence = new EvidenceCapture(config.gameUrl, config.outputDir);
   // Disable pre-action analysis to save time - we already analyzed the game upfront
