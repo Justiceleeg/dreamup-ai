@@ -36,7 +36,21 @@ async function getTestDetails(
   gameId: string,
   timestamp: string
 ): Promise<TestDetails | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  // During SSR on Railway, use internal port 8080
+  // In production browser requests, use public domain
+  // In development, use localhost:3000
+  const isServer = typeof window === 'undefined';
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  let baseUrl: string;
+  if (isServer) {
+    // Server-side: use localhost on Railway's internal port
+    baseUrl = isDev ? 'http://localhost:3000' : 'http://localhost:8080';
+  } else {
+    // Client-side: use current origin
+    baseUrl = '';
+  }
+  
   const res = await fetch(`${baseUrl}/api/tests/${gameId}/${timestamp}`, {
     cache: 'no-store',
   });
