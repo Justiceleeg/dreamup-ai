@@ -1,0 +1,9 @@
+{
+  "install": {
+    "command": "echo 'Skipping root install'"
+  },
+  "build": {
+    "command": "cd viewer && pnpm install && pnpm run build"
+  }
+}
+
