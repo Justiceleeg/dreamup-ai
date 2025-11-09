@@ -43,3 +43,4 @@ test-results/
 viewer/.next/
 viewer/out/
 viewer/public/test-results/
+viewer/src/  # Copied from project root during build

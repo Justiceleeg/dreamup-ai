@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { testGame } from '../../../../src/core/index.js';
-import type { QAConfig } from '../../../../src/shared/types.js';
+import { testGame } from '../../../src/core/index.js';
+import type { QAConfig } from '../../../src/shared/types.js';
 
 export async function POST(request: Request) {
   try {
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       gameUrl,
       timeout: Math.min(webTimeout, maxTimeout),
       screenshotCount: 5,
-      outputDir: '../test-results', // Relative to viewer directory
+      outputDir: './test-results', // Relative to viewer directory (will be created if needed)
       headed: false,
       logLevel: 'info',
     };
