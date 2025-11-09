@@ -59,19 +59,20 @@ async function copyTestResults() {
 }
 
 async function copySrcDirectory() {
-  // Railway builds from project root (configured in railway.json)
-  // When build command runs "cd viewer && pnpm run build", we're in /app/viewer
-  // The script is at /app/viewer/scripts/copy-test-results.js
-  // So src should be at /app/src (one level up from /app/viewer)
-  const currentDir = process.cwd(); // Should be /app/viewer
-  const scriptDir = __dirname; // Should be /app/viewer/scripts
+  // Railway might build from project root OR from viewer directory
+  // Check both scenarios:
+  // 1. If root is project: /app/viewer (currentDir), src is at /app/src
+  // 2. If root is viewer: /app (currentDir), src is at /app/../src
+  const currentDir = process.cwd(); // Could be /app/viewer or /app
+  const scriptDir = __dirname; // Could be /app/viewer/scripts or /app/scripts
   
   // Try multiple possible locations for src directory
   const possibleSrcDirs = [
-    join(currentDir, '..', 'src'),          // From /app/viewer: ../src = /app/src (most common)
-    join(scriptDir, '../..', 'src'),        // From /app/viewer/scripts: ../../src = /app/src
-    join(currentDir, 'src'),                // Already in project root: ./src (unlikely)
-    join('/app', 'src'),                    // Absolute path: /app/src
+    join(currentDir, '..', 'src'),          // From /app/viewer: ../src = /app/src OR from /app: ../src
+    join(scriptDir, '../..', 'src'),        // From /app/viewer/scripts: ../../src = /app/src OR from /app/scripts: ../../src
+    join(currentDir, 'src'),                // Already in project root: ./src
+    join('/app', 'src'),                    // Absolute path: /app/src (if building from project root)
+    join('/app', '..', 'src'),              // Absolute path: /src (if building from viewer)
   ];
   
   let sourceDir = null;
