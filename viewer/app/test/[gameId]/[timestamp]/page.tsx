@@ -72,23 +72,13 @@ function formatDuration(ms?: number): string {
 }
 
 function getScreenshotUrl(gameId: string, timestamp: string, filename: string): string {
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  if (isDevelopment) {
-    // In development, serve from the actual test-results directory
-    return `/api/screenshots/${gameId}/${timestamp}/${filename}`;
-  } else {
-    // In production, serve from public directory
-    return `/test-results/${gameId}/${timestamp}/${filename}`;
-  }
+  // Always use API route - it will check both runtime and static directories
+  return `/api/screenshots/${gameId}/${timestamp}/${filename}`;
 }
 
 function getConsoleLogUrl(gameId: string, timestamp: string): string {
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  if (isDevelopment) {
-    return `/api/screenshots/${gameId}/${timestamp}/console.log`;
-  } else {
-    return `/test-results/${gameId}/${timestamp}/console.log`;
-  }
+  // Always use API route - it will check both runtime and static directories
+  return `/api/screenshots/${gameId}/${timestamp}/console.log`;
 }
 
 export default async function TestDetailPage({

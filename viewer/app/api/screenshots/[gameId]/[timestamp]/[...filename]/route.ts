@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
+import { readFile, access } from 'fs/promises';
+import { constants } from 'fs';
 import { join } from 'path';
 
 export async function GET(
@@ -10,8 +11,25 @@ export async function GET(
     const { gameId, timestamp, filename } = await params;
     const filenamePath = Array.isArray(filename) ? filename.join('/') : filename;
 
-    // In development, read from the actual test-results directory
-    const resultsDir = join(process.cwd(), '..', 'test-results');
+    // Determine the test-results directory path
+    // In development, it's relative to the project root
+    // In production, tests write to ./test-results (relative to viewer directory)
+    // We check both locations: ./test-results (runtime) and public/test-results (static files from build)
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const runtimeResultsDir = isDevelopment
+      ? join(process.cwd(), '..', 'test-results')
+      : join(process.cwd(), 'test-results');
+    const staticResultsDir = join(process.cwd(), 'public', 'test-results');
+    
+    // Try runtime directory first (where new tests write), fallback to static directory
+    let resultsDir = runtimeResultsDir;
+    try {
+      await access(runtimeResultsDir, constants.F_OK);
+    } catch {
+      // Runtime directory doesn't exist, use static directory
+      resultsDir = staticResultsDir;
+    }
+    
     const filePath = join(resultsDir, gameId, timestamp, filenamePath);
 
     try {

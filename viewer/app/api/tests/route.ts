@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { readdir, readFile, stat } from 'fs/promises';
+import { readdir, readFile, stat, access } from 'fs/promises';
+import { constants } from 'fs';
 import { join } from 'path';
 
 interface TestManifest {
@@ -39,11 +40,22 @@ export async function GET() {
   try {
     // Determine the test-results directory path
     // In development, it's relative to the project root
-    // In production (Vercel), it's in the public directory
+    // In production, tests write to ./test-results (relative to viewer directory)
+    // We check both locations: ./test-results (runtime) and public/test-results (static files from build)
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const resultsDir = isDevelopment
+    const runtimeResultsDir = isDevelopment
       ? join(process.cwd(), '..', 'test-results')
-      : join(process.cwd(), 'public', 'test-results');
+      : join(process.cwd(), 'test-results');
+    const staticResultsDir = join(process.cwd(), 'public', 'test-results');
+    
+    // Try runtime directory first (where new tests write), fallback to static directory
+    let resultsDir = runtimeResultsDir;
+    try {
+      await access(runtimeResultsDir, constants.F_OK);
+    } catch {
+      // Runtime directory doesn't exist, use static directory
+      resultsDir = staticResultsDir;
+    }
 
     const testRuns: TestRun[] = [];
 
