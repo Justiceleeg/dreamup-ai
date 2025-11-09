@@ -60,16 +60,18 @@ async function copyTestResults() {
 
 async function copySrcDirectory() {
   // Railway builds from project root (configured in railway.json)
-  // When we run from viewer/scripts, src is at ../../src (project root)
-  // Current directory when script runs: /app/viewer (if root is project) or /app (if root is viewer)
-  const currentDir = process.cwd();
-  const scriptDir = __dirname;
+  // When build command runs "cd viewer && pnpm run build", we're in /app/viewer
+  // The script is at /app/viewer/scripts/copy-test-results.js
+  // So src should be at /app/src (one level up from /app/viewer)
+  const currentDir = process.cwd(); // Should be /app/viewer
+  const scriptDir = __dirname; // Should be /app/viewer/scripts
   
   // Try multiple possible locations for src directory
   const possibleSrcDirs = [
-    join(scriptDir, '../..', 'src'),        // From viewer/scripts: ../../src (project root) - most common
-    join(currentDir, '..', 'src'),          // From viewer: ../src (project root)
-    join(currentDir, 'src'),                // Already in project root: ./src
+    join(currentDir, '..', 'src'),          // From /app/viewer: ../src = /app/src (most common)
+    join(scriptDir, '../..', 'src'),        // From /app/viewer/scripts: ../../src = /app/src
+    join(currentDir, 'src'),                // Already in project root: ./src (unlikely)
+    join('/app', 'src'),                    // Absolute path: /app/src
   ];
   
   let sourceDir = null;
@@ -77,7 +79,7 @@ async function copySrcDirectory() {
     try {
       await access(dir, constants.F_OK);
       sourceDir = dir;
-      console.log(`Found src directory at: ${dir}`);
+      console.log(`✓ Found src directory at: ${dir}`);
       break;
     } catch {
       // Try next location
