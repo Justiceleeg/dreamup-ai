@@ -39,14 +39,20 @@ interface TestRun {
 export async function GET() {
   try {
     // Determine the test-results directory path
-    // In production on Railway: /app/test-results (written by CLI subprocess)
-    // In development: ../test-results
+    // On Railway, the standalone Next.js server runs from /app/viewer/.next/standalone/viewer/
+    // But CLI writes to /app/test-results/
+    // So we need to look at /app/test-results regardless of cwd
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const projectRoot = isDevelopment ? join(process.cwd(), '..') : '/app';
-    const runtimeResultsDir = join(projectRoot, 'test-results');
+    
+    // In production (Railway): always use /app/test-results
+    // In development: use ../test-results (relative to viewer directory)
+    const runtimeResultsDir = isDevelopment 
+      ? join(process.cwd(), '..', 'test-results')
+      : '/app/test-results';
     const staticResultsDir = join(process.cwd(), 'public', 'test-results');
     
     console.log('🔍 Checking for test results...');
+    console.log(`  CWD: ${process.cwd()}`);
     console.log(`  Runtime dir: ${runtimeResultsDir}`);
     console.log(`  Static dir: ${staticResultsDir}`);
     
@@ -55,18 +61,20 @@ export async function GET() {
     let usingStatic = false;
     try {
       await access(runtimeResultsDir, constants.F_OK);
-      console.log(`✓ Found runtime results dir: ${runtimeResultsDir}`);
-    } catch {
+      const stats = await stat(runtimeResultsDir);
+      console.log(`✓ Found runtime results dir: ${runtimeResultsDir} (is directory: ${stats.isDirectory()})`);
+    } catch (error) {
       // Runtime directory doesn't exist, use static directory
-      console.log(`⚠ Runtime dir not found, trying static: ${staticResultsDir}`);
+      console.log(`⚠ Runtime dir not accessible: ${error}`);
+      console.log(`  Trying static: ${staticResultsDir}`);
       resultsDir = staticResultsDir;
       usingStatic = true;
       try {
         await access(staticResultsDir, constants.F_OK);
         console.log(`✓ Found static results dir: ${staticResultsDir}`);
-      } catch {
-        console.log(`✗ Static dir also not found`);
-        return NextResponse.json({ tests: [], debug: { runtimeResultsDir, staticResultsDir, found: false } });
+      } catch (error2) {
+        console.log(`✗ Static dir also not found: ${error2}`);
+        return NextResponse.json({ tests: [], debug: { runtimeResultsDir, staticResultsDir, found: false, error: String(error), error2: String(error2) } });
       }
     }
 
