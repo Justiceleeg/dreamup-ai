@@ -9,6 +9,7 @@
     "dev": "next dev",
     "prebuild": "node scripts/copy-test-results.js",
     "build": "next build",
+    "postbuild": "node scripts/copy-standalone-assets.js",
     "start": "next start",
     "lint": "eslint"
   },
