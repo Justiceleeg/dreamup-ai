@@ -8,7 +8,7 @@ interface JsonViewerProps {
 }
 
 export default function JsonViewer({ data, title = 'Test Results' }: JsonViewerProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-6 mb-6">
