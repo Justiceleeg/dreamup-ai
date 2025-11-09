@@ -29,28 +29,31 @@ export default function TestForm() {
     setError(null);
 
     try {
-      const response = await fetch('/api/test', {
+      // Start the test (fire and forget - don't wait for response)
+      fetch('/api/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ gameUrl }),
+      }).catch(err => {
+        console.error('Test error:', err);
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || 'Test failed');
-      }
-
-      // Test completed successfully - refresh the page to show new results
-      router.refresh();
+      // Show immediate feedback
+      alert('✅ Test started! It will take 30-60 seconds to complete. Refresh the page in a minute to see results.');
+      
+      // Clear the form
       setGameUrl('');
+      setIsLoading(false);
+      
+      // Auto-refresh after 60 seconds to show new results
+      setTimeout(() => {
+        router.refresh();
+      }, 60000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to run test';
       setError(errorMessage);
-      console.error('Test error:', err);
-    } finally {
       setIsLoading(false);
     }
   };
