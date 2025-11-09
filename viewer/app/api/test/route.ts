@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { testGame } from '../../../src/core/index.js';
-import type { QAConfig } from '../../../src/shared/types.js';
+import { testGame } from '../../../src/core/index';
+import type { QAConfig } from '../../../src/shared/types';
 
 export async function POST(request: Request) {
   try {
