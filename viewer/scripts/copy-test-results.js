@@ -114,12 +114,46 @@ async function copySrcDirectory() {
 
     // Copy src to viewer/src
     await cp(sourceDir, destDir, { recursive: true });
+    
+    // Strip .js extensions from imports in all TypeScript files
+    await stripJsExtensions(destDir);
 
     console.log(`✓ src directory copied from ${sourceDir} to ${destDir}`);
   } catch (error) {
     console.error('✗ Failed to copy src directory:', error);
     // This is critical - exit with error if src copy fails
     process.exit(1);
+  }
+}
+
+/**
+ * Recursively strip .js extensions from import/export statements in TypeScript files
+ */
+async function stripJsExtensions(dir) {
+  const { readdir, readFile, writeFile, stat } = require('fs/promises');
+  const { join } = require('path');
+  
+  const entries = await readdir(dir);
+  
+  for (const entry of entries) {
+    const fullPath = join(dir, entry);
+    const stats = await stat(fullPath);
+    
+    if (stats.isDirectory()) {
+      await stripJsExtensions(fullPath);
+    } else if (entry.endsWith('.ts') || entry.endsWith('.tsx')) {
+      let content = await readFile(fullPath, 'utf-8');
+      
+      // Replace .js extensions in import/export statements
+      // Matches: import ... from '...js'; or export ... from '...js';
+      const updated = content
+        .replace(/from ['"](.+)\.js['"]/g, "from '$1'")
+        .replace(/import\(['"](.+)\.js['"]\)/g, "import('$1')");
+      
+      if (updated !== content) {
+        await writeFile(fullPath, updated, 'utf-8');
+      }
+    }
   }
 }
 
