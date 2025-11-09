@@ -34,26 +34,37 @@ export async function GET(
     const { gameId, timestamp } = await params;
 
     // Determine the test-results directory path
-    // In development, it's relative to the project root
-    // In production, tests write to ./test-results (relative to viewer directory)
-    // We check both locations: ./test-results (runtime) and public/test-results (static files from build)
+    // On Railway, standalone Next.js runs from /app/viewer/.next/standalone/viewer/
+    // But CLI writes to /app/test-results/
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const runtimeResultsDir = isDevelopment
+    
+    // In production (Railway): always use /app/test-results
+    // In development: use ../test-results (relative to viewer directory)
+    const runtimeResultsDir = isDevelopment 
       ? join(process.cwd(), '..', 'test-results')
-      : join(process.cwd(), 'test-results');
+      : '/app/test-results';
     const staticResultsDir = join(process.cwd(), 'public', 'test-results');
+    
+    console.log(`📄 Fetching test details: ${gameId}/${timestamp}`);
+    console.log(`  Runtime dir: ${runtimeResultsDir}`);
+    console.log(`  Static dir: ${staticResultsDir}`);
     
     // Try runtime directory first (where new tests write), fallback to static directory
     let resultsDir = runtimeResultsDir;
     try {
       await access(runtimeResultsDir, constants.F_OK);
-    } catch {
+      console.log(`✓ Using runtime dir: ${runtimeResultsDir}`);
+    } catch (error) {
       // Runtime directory doesn't exist, use static directory
+      console.log(`⚠ Runtime dir not found, using static: ${staticResultsDir}`);
       resultsDir = staticResultsDir;
     }
 
     const testPath = join(resultsDir, gameId, timestamp);
     const manifestPath = join(testPath, 'manifest.json');
+    
+    console.log(`  Test path: ${testPath}`);
+    console.log(`  Manifest path: ${manifestPath}`);
 
     try {
       // Read and parse manifest.json
@@ -69,12 +80,14 @@ export async function GET(
         // Console log doesn't exist or can't be read, that's okay
       }
 
+      console.log(`✓ Test details loaded successfully`);
       return NextResponse.json({
         manifest,
         consoleLog: consoleLogContent,
       });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.error(`✗ Test not found: ${manifestPath}`);
         return NextResponse.json(
           { error: 'Test not found' },
           { status: 404 }
