@@ -1,4 +1,5 @@
 {
+  "node": "22",
   "install": {
     "command": "echo 'Skipping root install'"
   },
