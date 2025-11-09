@@ -13,17 +13,37 @@ interface TestRun {
 }
 
 async function getTests(): Promise<TestRun[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const res = await fetch(`${baseUrl}/api/tests`, {
-    cache: 'no-store',
-  });
+  try {
+    // During SSR on Railway, use internal port 8080
+    // In production browser requests, use public domain
+    // In development, use localhost:3000
+    const isServer = typeof window === 'undefined';
+    const isDev = process.env.NODE_ENV === 'development';
+    
+    let baseUrl: string;
+    if (isServer) {
+      // Server-side: use localhost on Railway's internal port
+      baseUrl = isDev ? 'http://localhost:3000' : 'http://localhost:8080';
+    } else {
+      // Client-side: use current origin
+      baseUrl = '';
+    }
+    
+    const res = await fetch(`${baseUrl}/api/tests`, {
+      cache: 'no-store',
+    });
 
-  if (!res.ok) {
+    if (!res.ok) {
+      console.error('Failed to fetch tests:', res.status, res.statusText);
+      return [];
+    }
+
+    const data = await res.json();
+    return data.tests || [];
+  } catch (error) {
+    console.error('Error fetching tests:', error);
     return [];
   }
-
-  const data = await res.json();
-  return data.tests || [];
 }
 
 function formatTimestamp(timestamp: string): string {
