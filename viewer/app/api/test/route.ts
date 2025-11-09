@@ -51,9 +51,9 @@ export async function POST(request: Request) {
       '--output', outputDir,
     ];
 
-    console.log(`🚀 Running: node --loader tsx ${args.join(' ')}`);
+    console.log(`🚀 Running: node --import tsx ${args.join(' ')}`);
 
-    const childProcess = spawn('node', ['--loader', 'tsx', ...args], {
+    const childProcess = spawn('node', ['--import', 'tsx', ...args], {
       cwd: projectRoot,
       env: { ...process.env },
       stdio: 'pipe',
