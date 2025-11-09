@@ -59,18 +59,17 @@ async function copyTestResults() {
 }
 
 async function copySrcDirectory() {
-  // When Railway builds from viewer directory, we're already in /app (viewer)
-  // The src directory should be at the project root, which is one level up
-  // But if Railway is building from project root, we need to check both locations
+  // Railway builds from project root (configured in railway.json)
+  // When we run from viewer/scripts, src is at ../../src (project root)
+  // Current directory when script runs: /app/viewer (if root is project) or /app (if root is viewer)
   const currentDir = process.cwd();
   const scriptDir = __dirname;
   
   // Try multiple possible locations for src directory
   const possibleSrcDirs = [
-    join(scriptDir, '../..', 'src'),        // From viewer/scripts: ../../src (project root)
+    join(scriptDir, '../..', 'src'),        // From viewer/scripts: ../../src (project root) - most common
     join(currentDir, '..', 'src'),          // From viewer: ../src (project root)
     join(currentDir, 'src'),                // Already in project root: ./src
-    join('/app', '..', 'src'),              // Railway build context: ../src from /app
   ];
   
   let sourceDir = null;
@@ -78,6 +77,7 @@ async function copySrcDirectory() {
     try {
       await access(dir, constants.F_OK);
       sourceDir = dir;
+      console.log(`Found src directory at: ${dir}`);
       break;
     } catch {
       // Try next location
@@ -86,9 +86,11 @@ async function copySrcDirectory() {
   }
   
   if (!sourceDir) {
-    console.warn('⚠ src directory not found in any expected location, skipping copy');
-    console.warn('  Tried locations:', possibleSrcDirs.map(d => d.replace(process.cwd(), '.')).join(', '));
-    return;
+    console.error('✗ src directory not found in any expected location');
+    console.error('  Tried locations:', possibleSrcDirs.join(', '));
+    console.error('  Current directory:', currentDir);
+    console.error('  Script directory:', scriptDir);
+    process.exit(1);
   }
 
   // Destination is always relative to current directory (viewer)
