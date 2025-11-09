@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import JsonViewer from '../../../components/json-viewer';
 
 interface Screenshot {
   filename: string;
@@ -30,6 +31,7 @@ interface TestManifest {
 interface TestDetails {
   manifest: TestManifest;
   consoleLog: string;
+  testOutput?: any; // The JSON output from the CLI
 }
 
 async function getTestDetails(
@@ -107,7 +109,7 @@ export default async function TestDetailPage({
     notFound();
   }
 
-  const { manifest, consoleLog } = testDetails;
+  const { manifest, consoleLog, testOutput } = testDetails;
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
@@ -127,6 +129,9 @@ export default async function TestDetailPage({
             {manifest.gameUrl}
           </p>
         </div>
+
+        {/* Test Output JSON */}
+        {testOutput && <JsonViewer data={testOutput} title="Test Results (JSON)" />}
 
         {/* Metadata Section */}
         <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-6 mb-6">

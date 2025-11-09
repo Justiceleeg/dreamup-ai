@@ -12,13 +12,15 @@ export async function GET(
     const filenamePath = Array.isArray(filename) ? filename.join('/') : filename;
 
     // Determine the test-results directory path
-    // In development, it's relative to the project root
-    // In production, tests write to ./test-results (relative to viewer directory)
-    // We check both locations: ./test-results (runtime) and public/test-results (static files from build)
+    // On Railway, standalone Next.js runs from /app/viewer/.next/standalone/viewer/
+    // But CLI writes to /app/test-results/
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const runtimeResultsDir = isDevelopment
+    
+    // In production (Railway): always use /app/test-results
+    // In development: use ../test-results (relative to viewer directory)
+    const runtimeResultsDir = isDevelopment 
       ? join(process.cwd(), '..', 'test-results')
-      : join(process.cwd(), 'test-results');
+      : '/app/test-results';
     const staticResultsDir = join(process.cwd(), 'public', 'test-results');
     
     // Try runtime directory first (where new tests write), fallback to static directory
@@ -51,12 +53,13 @@ export async function GET(
         headers: {
           'Content-Type': contentType,
           'Content-Disposition': `inline; filename="${filenamePath}"`,
+          'Cache-Control': 'public, max-age=31536000, immutable',
         },
       });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return NextResponse.json(
-          { error: 'File not found' },
+          { error: 'File not found', path: filePath },
           { status: 404 }
         );
       }

@@ -80,10 +80,23 @@ export async function GET(
         // Console log doesn't exist or can't be read, that's okay
       }
 
+      // Try to read test-output.json if it exists (the CLI's JSON output)
+      let testOutput: any = null;
+      try {
+        const testOutputPath = join(testPath, 'test-output.json');
+        const testOutputContent = await readFile(testOutputPath, 'utf-8');
+        testOutput = JSON.parse(testOutputContent);
+      } catch {
+        // Test output doesn't exist, use manifest data to build it
+        // The manifest itself contains the test results
+        testOutput = manifest;
+      }
+
       console.log(`✓ Test details loaded successfully`);
       return NextResponse.json({
         manifest,
         consoleLog: consoleLogContent,
+        testOutput,
       });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
