@@ -39,25 +39,39 @@ interface TestRun {
 export async function GET() {
   try {
     // Determine the test-results directory path
-    // In development, it's relative to the project root
-    // In production, tests write to ./test-results (relative to viewer directory)
-    // We check both locations: ./test-results (runtime) and public/test-results (static files from build)
+    // In production on Railway: /app/test-results (written by CLI subprocess)
+    // In development: ../test-results
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const runtimeResultsDir = isDevelopment
-      ? join(process.cwd(), '..', 'test-results')
-      : join(process.cwd(), 'test-results');
+    const projectRoot = isDevelopment ? join(process.cwd(), '..') : '/app';
+    const runtimeResultsDir = join(projectRoot, 'test-results');
     const staticResultsDir = join(process.cwd(), 'public', 'test-results');
+    
+    console.log('🔍 Checking for test results...');
+    console.log(`  Runtime dir: ${runtimeResultsDir}`);
+    console.log(`  Static dir: ${staticResultsDir}`);
     
     // Try runtime directory first (where new tests write), fallback to static directory
     let resultsDir = runtimeResultsDir;
+    let usingStatic = false;
     try {
       await access(runtimeResultsDir, constants.F_OK);
+      console.log(`✓ Found runtime results dir: ${runtimeResultsDir}`);
     } catch {
       // Runtime directory doesn't exist, use static directory
+      console.log(`⚠ Runtime dir not found, trying static: ${staticResultsDir}`);
       resultsDir = staticResultsDir;
+      usingStatic = true;
+      try {
+        await access(staticResultsDir, constants.F_OK);
+        console.log(`✓ Found static results dir: ${staticResultsDir}`);
+      } catch {
+        console.log(`✗ Static dir also not found`);
+        return NextResponse.json({ tests: [], debug: { runtimeResultsDir, staticResultsDir, found: false } });
+      }
     }
 
     const testRuns: TestRun[] = [];
+    console.log(`📂 Reading test results from: ${resultsDir}`);
 
     try {
       // Read all game directories
@@ -116,7 +130,15 @@ export async function GET() {
       return timeB - timeA;
     });
 
-    return NextResponse.json({ tests: testRuns });
+    console.log(`✓ Found ${testRuns.length} test run(s)`);
+    return NextResponse.json({ 
+      tests: testRuns,
+      debug: { 
+        resultsDir, 
+        usingStatic: usingStatic || false, 
+        count: testRuns.length 
+      }
+    });
   } catch (error) {
     console.error('Error reading test results:', error);
     return NextResponse.json(
