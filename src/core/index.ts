@@ -281,6 +281,10 @@ async function testGameInternal(config: QAConfig, startTime: number): Promise<Te
       `\n✅ Test completed - Playability Score: ${evaluation.playability_score}/100 (Confidence: ${evaluation.confidence}%)`
     );
     console.log(`📁 Results saved to: ${evidence.getTestDir()}`);
+    
+    // Save test result JSON to file for viewer
+    await evidence.saveTestResult(result);
+    
     return result;
   } catch (error) {
     const errorMsg = handleError(error);

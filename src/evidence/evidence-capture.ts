@@ -11,6 +11,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { simpleHash, hashAsNumber } from '../shared/utils/hash.js';
+import type { TestResult } from '../shared/types.js';
 
 // Type for page objects (can be Stagehand Page or Playwright Page from context.pages())
 type PageLike = any;
@@ -492,6 +493,28 @@ export class EvidenceCapture {
     } catch (error) {
       throw new Error(
         `Failed to save manifest: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Save test result JSON (the actual TestResult with status, playability_score, etc.)
+   *
+   * @param result - Test result to save
+   * @returns Path to test result file
+   */
+  async saveTestResult(result: TestResult): Promise<string> {
+    try {
+      await this.ensureDirectories();
+
+      const filepath = join(this.testDir, 'test-output.json');
+      await writeFile(filepath, JSON.stringify(result, null, 2), 'utf-8');
+
+      console.log(`✓ Test result saved: test-output.json`);
+      return filepath;
+    } catch (error) {
+      throw new Error(
+        `Failed to save test result: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
